@@ -1,6 +1,5 @@
-# 关于GUI开发
 
-
+UI的项目和个人尝试代码都移出该git仓库，到《Learn_Embedded》下面
 
 [toc]
 
@@ -84,9 +83,6 @@ Qt的官方文档就是最好的学习资料
 
 > [Qt Creator中的.pro文件的详解](https://blog.csdn.net/hebbely/article/details/66970821)
 >
-> 
-
-
 
 ### 一些问题的总结
 
@@ -136,34 +132,25 @@ Qt的官方文档就是最好的学习资料
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## [PySide2](https://doc.qt.io/qtforpython/modules.html)（2021已为PySide6）
 
-标题链接是官方文档，还有一个写的很不错的[中文博客](https://www.cnblogs.com/zach0812/category/1524140.html)、
+标题链接是官方文档，还有一个写的很不错的[中文博客](https://www.cnblogs.com/zach0812/category/1524140.html)
 
-#### PyQt5和PySide2的区别
+### 不错的pyside开源项目
+- [Modern-Desktop-GUI](https://github.com/KhamisiKibet/24-Modern-Desktop-GUI)
+- [Modern-Desktop-GUI youtube介绍](https://www.youtube.com/watch?v=JK-B-CT34EU)
+
+- 
+
+### pyside教程
+- [pyside tutorials](https://www.pythonguis.com/tutorials/pyside6-creating-your-first-window/)
+- 
+
+### PyQt和PySide的区别
 
 [PyQt5和PySide2的区别](https://www.zhihu.com/question/21237276)、
 
 > [可以参考这篇文章](https://machinekoder.com/pyqt-vs-qt-for-python-pyside2-pyside/)、
->
->
-> 
 >
 > 目前PyQt是由一家小公司[Riverbank Computing](https://link.zhihu.com/?target=https%3A//riverbankcomputing.com)维护的，PyQt历史更长一些，比较稳定，开发社区也比较大，有相关的deploy工具；而PySide（又名Qt for Python）现由Qt公司维护，比PyQt更年轻一些。截至2019年，最新版本是PyQt5和PySide2。
 >
@@ -177,7 +164,7 @@ Qt的官方文档就是最好的学习资料
 >
 > （从文档看我还是倾向用Qt for Python的）
 
-#### UI files
+### UI files
 
 Both packages use slightly different approaches for loading `.ui` files exported from Qt Creator/Designer. PyQt5 provides the `uic` submodule which can be used to load UI files directly, to produce an object. This feels pretty Pythonic (if you ignore the camelCase).
 
@@ -248,7 +235,7 @@ window.show()
 app.exec()
 ```
 
-#### Converting UI files to Python
+### Converting UI files to Python
 
 Both libraries provide identical scripts to generate Python importable modules from Qt Designer `.ui` files. For PyQt5 the script is named `pyuic5` —
 
@@ -308,7 +295,7 @@ app.exec_()
 
 For more information on using Qt Designer with either PyQt5 or PySide2 see the [Qt Creator tutorial](https://www.learnpyqt.com/courses/qt-creator/).
 
-#### exec() or exec_()
+### exec() or exec_()
 
 The `.exec()` method is used in Qt to start the event loop of your `QApplication` or dialog boxes. In Python 2.7 `exec` was a keyword, meaning it could not be used for variable, function or method names. The solution used in both PyQt4 and PySide was to rename uses of `.exec` to `.exec_()` to avoid this conflict.
 
@@ -318,7 +305,7 @@ PySide2 is available on both Python 3 and Python 2.7 and so still uses `.exec_()
 
 If you're targeting both PySide2 and PyQt5 use `.exec_()`
 
-#### Slots and Signals
+### Slots and Signals
 
 Defining custom slots and signals uses slightly different syntax between the two libraries. PySide2 provides this interface under the names `Signal` and `Slot` while PyQt5 provides these as `pyqtSignal` and `pyqtSlot` respectively. The behaviour of them both is identical for defining and slots and signals. 
 
@@ -353,7 +340,7 @@ from PyQt5.QtCore import pyqtSignal as Signal, pyqtSlot as Slot
 
 You could of course do the reverse `from PySide2.QtCore import Signal as pyqtSignal, Slot as pyqtSlot` although that's a bit confusing.
 
-#### Supporting both in libraries
+### Supporting both in libraries
 
 You don't need to worry about this if you're writing a standalone app, just use whichever API you prefer.
 
