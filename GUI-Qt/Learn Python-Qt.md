@@ -8,11 +8,16 @@
 - [上述项目youtube说明](https://www.youtube.com/watch?v=9DnaHg4M_AM&t=156s)
 
 
-### pyside教程
-- [pyside tutorials](https://www.pythonguis.com/tutorials/pyside6-creating-your-first-window/)
-- 
+## pyside教程
+- [pyside计算器](https://cloud.tencent.com/developer/article/2334289)
+- [pyside官方教程](https://doc.qt.io/qtforpython-6/)
 
-### PyQt和PySide的区别
+- [《Create GUI Applications with PySide6 Edition5》](https://www.pythonguis.com/tutorials/)
+- [PySide6-Code-Tutorial](https://github.com/muziing/PySide6-Code-Tutorial)
+
+- [PyQt_practice](https://github.com/muziing/PyQt_practice)
+
+## PyQt和PySide的区别
 
 [PyQt5和PySide2的区别](https://www.zhihu.com/question/21237276)、
 
@@ -29,13 +34,105 @@
 > （从文档看我还是倾向用Qt for Python的）
 > 
 
+
+## vscode写pyqt
+- [VSCode插件"PYQT Integration" 和 "Qt for Python"的区别](https://juejin.cn/post/7319541565319348275)
+下载插件-Qt for Python
+
+
 # 技术框架
 
+## 如何做好模块化？
+- [Qt 中的 Model/View 结构](https://muzing.top/posts/5ff61cbd/)
+什么时候用类？当几个函数具有明显的可扩展性和通用性时，无疑是需要类风装的，这样你可以作为副类让其他类继承这种通用性的函数，比如说一些基本的文件处理批量的重命名，在你整个科研过程中都要用到，不仅是处理图片还是处理数据还是处理什么东西都要用到类似的函数，那你可以把这一个函数封装到一个积累中，比如说就是file handler 然后图像处理的可以继承它用他的函数。
 
+还有一种情况就是该文件(模块) 即使没有太多通用性，但是有一些所有函数都需要用到的全局变量，当然也可以把它作为局部变量传来传去，如果是数字或者字符串这种不大的数据也倒是可以，但是比如一个数组或者是一个对象可能就要作为全局变量，这种时候多文件管理起来就很多问题，不如把这个文件中的函数和全局变量都放到一个类里，此时这些函数依然可以调用改变量，但是是在这个对象内部。
 
+对此chatgpt举了一个例子，还是可以的，如下！
+在多个函数间共享状态的场景通常涉及到这些函数需要访问和修改相同的数据或属性。如果将这些函数封装在一个类中，可以通过类的实例属性来共享和管理这些状态。以下是一个具体的例子，展示了在多个函数间共享状态的情况。
+### 何时用类---图片处理为例
+假设你正在编写一个图片处理应用程序，涉及到加载图片、应用滤镜、调整亮度、以及保存图片的功能。这些操作都需要访问和修改相同的图片数据。
+#### 1. 使用全局变量和独立函数（不共享状态的方式）
+```python
+import numpy as np
+from PIL import Image, ImageEnhance
+
+def load_image(file_path):
+    global img
+    img = Image.open(file_path)
+    print("Image loaded.")
+
+def apply_filter(filter_type):
+    global img
+    if filter_type == "grayscale":
+        img = img.convert("L")
+        print("Grayscale filter applied.")
+    elif filter_type == "invert":
+        img = Image.fromarray(np.invert(np.array(img)))
+        print("Invert filter applied.")
+
+def adjust_brightness(factor):
+    global img
+    enhancer = ImageEnhance.Brightness(img)
+    img = enhancer.enhance(factor)
+    print("Brightness adjusted.")
+
+def save_image(output_path):
+    global img
+    img.save(output_path)
+    print("Image saved.")
+```
+
+在这种情况下，`img` 是一个全局变量，在多个函数之间共享和修改。这种方式在简单的脚本中可能是有效的，但存在以下问题：
+
+- **易出错**：全局变量容易被意外修改，导致难以调试的错误。
+- **难以维护**：随着代码复杂性的增加，管理全局状态变得困难。
+
+#### 2. 使用类共享状态
+通过将这些功能封装在一个类中，图片数据 (`img`) 可以作为类的实例属性在多个方法之间共享。
+
+```python
+import numpy as np
+from PIL import Image, ImageEnhance
+
+class ImageProcessor:
+    def __init__(self, file_path):
+        self.img = Image.open(file_path)
+        print("Image loaded.")
+
+    def apply_filter(self, filter_type):
+        if filter_type == "grayscale":
+            self.img = self.img.convert("L")
+            print("Grayscale filter applied.")
+        elif filter_type == "invert":
+            self.img = Image.fromarray(np.invert(np.array(self.img)))
+            print("Invert filter applied.")
+
+    def adjust_brightness(self, factor):
+        enhancer = ImageEnhance.Brightness(self.img)
+        self.img = enhancer.enhance(factor)
+        print("Brightness adjusted.")
+
+    def save_image(self, output_path):
+        self.img.save(output_path)
+        print("Image saved.")
+
+# 使用示例
+processor = ImageProcessor("input_image.jpg")
+processor.apply_filter("grayscale")
+processor.adjust_brightness(1.5)
+processor.save_image("output_image.jpg")
+```
+
+在这个例子中，`ImageProcessor` 类的每个方法都可以访问和修改 `self.img`，这是一个类实例的属性。这样做的好处包括：
+
+- **状态封装**：`img` 的状态被封装在 `ImageProcessor` 类的实例中，不会被全局变量污染。
+- **易于扩展**：如果将来需要添加新的方法或属性，可以很容易地扩展 `ImageProcessor` 类，而无需担心全局状态的管理。
+- **更好的代码组织**：通过类将相关功能封装在一起，使代码更有组织性，易于理解和维护。
+#### 总结
+通过类来共享状态，可以使代码更加模块化和结构化，减少全局变量的使用，降低错误的风险，并提高代码的可维护性。这种方法特别适用于需要在多个函数之间共享和修改相同数据的场景。
 
 ## UI files
-
 Both packages use slightly different approaches for loading `.ui` files exported from Qt Creator/Designer. PyQt5 provides the `uic` submodule which can be used to load UI files directly, to produce an object. This feels pretty Pythonic (if you ignore the camelCase).
 
 ```python
@@ -371,7 +468,6 @@ You could of course do the reverse `from PySide2.QtCore import Signal as pyqtSig
 ```
 
 
-
 ## Python 与 QML 通信
 首先，对于每一个界面 (QML 文件)，我们都有一个与之对应 Python 文件 (除非该页面没有具体的业务逻辑，例如：`ui\SciHubEVAAbout.qml` 为关于页面，`ui\SciHubEVAMenuBar.qml` 为菜单栏)，以主页面 (`ui\SciHubEVA.qml` 和 `scihub_eva.py`) 为例，我们为每个界面创建一个类，同时该类集成自 Qt 的一个基类：
 
@@ -408,8 +504,8 @@ Python 代码同界面交互的核心是通过 Qt 的 [**信号与槽**](http://
 
 ```
 
-## 资源文件
-
+## 资源文件（qrc）
+- [在PyQt中使用qrc-rcc资源系统](https://github.com/muziing/PySide6-Code-Tutorial/blob/main/07-Packaging-资源管理与打包/01-资源管理/01-在PyQt中使用qrc-rcc资源系统.md)
 在 GUI 编程中，我们不可避免的会使用到各种各样的资源，例如：图片，音频，字体等等。Qt 中提供了一种[资源管理方案](http://doc.qt.io/qt-5/resources.html)，可以在不同场景下使用 (Python 和 QML 中均可)。`SciHubEVA.qrc` 定义了所有使用到的资源：
 
 ```xml
@@ -522,3 +618,136 @@ if __name__ == '__main__':
         time.sleep(0.1)
         rate.value = i
 ```
+
+# 开源项目分析
+
+## [Modern_GUI_PyDracula_PySide6_or_PyQt6](https://github.com/Wanderson-Magalhaes/Modern_GUI_PyDracula_PySide6_or_PyQt6)
+根据这个项目的文件和目录结构，以及一些常见的 Python 和 Qt 的项目构建流程，我们可以推测这个项目的构建过程可能如下：
+
+1. **设计用户界面**：使用 Qt Designer 或其他 UI 设计工具创建 UI 设计，保存为 `.ui` 文件。在这个项目中，这个文件是 `main.ui`。
+2. **转换 UI 文件**：使用 `pyside6-uic` 或 `pyuic6`（取决于你使用的是 PySide6 还是 PyQt6）将 `.ui` 文件转换为 Python 文件。在这个项目中，这个文件可能是 `ui_main.py`。
+3. **编写代码**：在 `modules` 和 `widgets` 文件夹中编写 Python 代码，实现应用程序的逻辑和功能。这些代码使用了在步骤 2 中生成的 UI 类，以及其他的 Qt 类和模块。
+4. **添加资源**：添加图像、图标和其他资源到项目中。这些资源可能被用于项目的用户界面。在这个项目中，这些资源被保存在 `images` 文件夹中。另外，`themes` 文件夹中的 `.qss` 文件是 Qt 样式表文件，用于设置应用程序的样式和主题。
+5. **编写主程序**：在 `main.py` 文件中编写主程序，这个程序导入并使用了在步骤 3 中编写的模块，以及在步骤 2 中生成的 UI 类。主程序创建了一个 QApplication 实例和一个 QMainWindow 实例，并显示了主窗口。
+6. **运行程序**：运行 `main.py` 文件，启动应用程序。
+
+## QA
+### 问题1：app_functions.py和main.py不在一个文件夹，为何语句 from main import * 可以导入main.py
+
+> ChatGPT
+
+在Python中，`from module import *` 语句会查找系统路径（sys.path）中的模块。`sys.path` 是一个列表，它包含了Python解释器查找模块的路径。当你运行一个Python脚本时，脚本的当前目录会自动添加到 `sys.path` 中。
+
+如果 `main.py` 和 `app_functions.py` 不在同一个目录，`from main import *` 可能仍然能够正确工作，因为以下几个可能的原因：
+
+1. 如果你是在项目的根目录下运行 `main.py` 文件，那么项目的根目录会被添加到 `sys.path`，因此 `main.py` 可以被找到。
+2. 你的Python环境可能已经被配置为在其他的路径下查找模块。例如，你可能已经将项目的根目录或其他包含 `main.py` 的目录添加到了Python的环境变量 `PYTHONPATH` 中。
+3. 你可能在运行脚本之前更改了当前目录，使得 `main.py` 所在的目录变成了当前目录。
+
+然而，这种将脚本放在不同目录并直接导入的方式并不是一个好的做法，因为它使得代码的结构变得不清晰，也增加了维护难度。在大型项目中，通常会将代码组织成包和模块，并使用相对导入或绝对导入的方式来导入模块。在这个项目中，如果 `app_functions.py` 需要使用 `main.py` 中的代码，那么更好的方式可能是将共享的代码放在一个单独的模块中，然后在 `main.py` 和 `app_functions.py` 中都导入这个模块。
+
+### 问题2：pyside6 串口数据实时显示
+
+> ChatGPT
+
+要实现在 PySide6 中实现串口数据的实时显示，你需要先安装 `pyserial` 库以便读取串口数据。然后，你可以使用 PySide6 的 `QTextEdit` 或 `QPlainTextEdit` 控件来显示数据。
+
+由于此环境无法访问硬件接口，我无法在这里提供完全的示例代码，但是以下是一个基本的框架，你可以在你自己的环境中试试：
+```python
+from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit
+from PySide6.QtCore import QTimer
+import serial
+import sys
+
+class SerialReader:
+    def __init__(self, port, baudrate):
+        self.serial_port = serial.Serial(port, baudrate)
+
+    def read(self):
+        if self.serial_port.in_waiting > 0:
+            return self.serial_port.read(self.serial_port.in_waiting).decode()
+        else:
+            return ''
+
+class MainWindow(QMainWindow):
+    def __init__(self, serial_reader):
+        super().__init__()
+
+        self.serial_reader = serial_reader
+        self.text_edit = QTextEdit(self)
+
+        self.setCentralWidget(self.text_edit)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_data)
+        self.timer.start(1000)  # Update every second
+
+    def update_data(self):
+        data = self.serial_reader.read()
+        self.text_edit.append(data)
+
+def main():
+    app = QApplication(sys.argv)
+
+    serial_reader = SerialReader('COM3', 9600)  # Use your serial port and baudrate
+    window = MainWindow(serial_reader)
+    window.show()
+
+    sys.exit(app.exec())
+
+if __name__ == '__main__':
+    main()
+```
+
+在这个代码中，我们首先定义了一个 `SerialReader` 类，它包装了 `pyserial` 库的基本功能，用于读取串口数据。然后，我们创建了一个 `MainWindow` 类，它是一个包含 `QTextEdit` 控件的 `QMainWindow`。我们使用 `QTimer` 每秒更新一次 `QTextEdit` 的内容。
+
+请注意，这个代码中的串口参数（'COM3', 9600）是示例值，你需要根据你的硬件设置进行修改。此外，你可能还需要根据你的需求调整定时器的频率（目前设为每秒更新一次）。
+
+
+
+上述代码能用QtSerialPort代替pyserial实现吗
+
+是的，你完全可以使用 Qt 的 QtSerialPort 模块来替代 pyserial。下面是一个使用 QtSerialPort 实现的例子：
+```python
+from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit
+from PySide6.QtCore import QTimer
+from PySide6.QtSerialPort import QSerialPort
+import sys
+
+class MainWindow(QMainWindow):
+    def __init__(self, port_name, baud_rate):
+        super().__init__()
+
+        self.serial_port = QSerialPort()
+        self.serial_port.setPortName(port_name)
+        self.serial_port.setBaudRate(baud_rate)
+        self.serial_port.open(QSerialPort.ReadWrite)
+
+        self.text_edit = QTextEdit(self)
+
+        self.setCentralWidget(self.text_edit)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_data)
+        self.timer.start(1000)  # Update every second
+
+    def update_data(self):
+        if self.serial_port.canReadLine():
+            data = self.serial_port.readLine().data().decode()
+            self.text_edit.append(data)
+
+def main():
+    app = QApplication(sys.argv)
+
+    window = MainWindow('COM3', QSerialPort.Baud9600)  # Use your serial port and baudrate
+    window.show()
+
+    sys.exit(app.exec())
+
+if __name__ == '__main__':
+    main()
+```
+
+在这个代码中，我们创建了一个 `QSerialPort` 实例并设置了串口名称和波特率，然后我们每秒读取一次串口的数据并将其添加到 `QTextEdit` 控件中。
+
+同样，代码中的串口参数（'COM3', QSerialPort.Baud9600）是示例值，你需要根据你的硬件设置进行修改。
