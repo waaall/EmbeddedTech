@@ -619,6 +619,63 @@ if __name__ == '__main__':
         rate.value = i
 ```
 
+## 控件为什么要传递self进去
+
+在 PySide 中，`QPlainTextEdit` 控件的构造函数可以接受一个父级控件作为参数。`self` 通常指的是当前的主窗口或父级窗口。在大多数情况下，将 `self` 作为参数传递给 `QPlainTextEdit` 的构造函数是为了设置它的父级控件，这样做有以下几个好处：
+
+### 1. 控制控件的生命周期
+当你将 `self` 传递给 `QPlainTextEdit` 时，`QPlainTextEdit` 控件的生命周期会与它的父控件（通常是主窗口或另一个容器控件）绑定在一起。当父控件被销毁时，子控件也会自动销毁，无需手动管理子控件的内存。
+
+### 2. 层级管理
+通过指定父控件，可以确保控件在窗口的层级结构中正确显示。例如，如果你在主窗口中创建多个控件，并且将它们的父控件设置为主窗口（`self`），这些控件将按照你在布局中指定的方式显示，并且层级结构清晰。
+
+### 3. 事件传播
+在 Qt 的信号与槽机制中，事件可以在父子控件之间传播。如果控件有父级，事件会首先传递给子控件，然后再传递给父控件。这有助于统一处理某些事件，如按键或鼠标事件。
+
+### 4. 确保控件显示在父窗口中
+如果不传递 `self` 或其他父级控件，那么这个控件会成为一个独立的窗口（顶层窗口），而不是主窗口的一部分。在大多数 GUI 应用中，控件通常是嵌入在窗口中的一部分，而不是独立的窗口，因此需要指定父级控件。
+
+### 示例代码
+
+```python
+from PySide6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QPlainTextEdit, QWidget
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.init_ui()
+
+    def init_ui(self):
+        # 设置主窗口布局
+        self.central_widget = QWidget(self)
+        self.setCentralWidget(self.central_widget)
+        self.layout = QVBoxLayout(self.central_widget)
+
+        # 创建 QPlainTextEdit 控件，并将主窗口 self 作为其父级控件
+        self.text_edit = QPlainTextEdit(self)
+        self.text_edit.setReadOnly(True)  # 设置为只读，避免用户直接修改内容
+        self.layout.addWidget(self.text_edit)
+
+if __name__ == "__main__":
+    app = QApplication([])
+
+    window = MainWindow()
+    window.show()
+
+    app.exec_()
+```
+
+### 解释：
+
+- **`self` 作为父控件**：在这个例子中，`QPlainTextEdit(self)` 表示 `QPlainTextEdit` 控件的父级是 `MainWindow`，因此这个控件将嵌入在 `MainWindow` 中，而不是独立存在。
+
+- **生命周期管理**：当 `MainWindow` 被销毁时，`QPlainTextEdit` 控件也会被自动销毁，确保不会有悬空指针或内存泄漏。
+
+### 总结
+
+将 `self` 传递给控件的构造函数是为了确保该控件与其父窗口或容器控件正确关联，确保它在 UI 层级结构中正确显示，并且简化内存和事件管理。这是 PySide 和 Qt 中常见的设计模式，能使得控件的行为更加直观和易于管理。
+
 # 开源项目分析
 
 ## [Modern_GUI_PyDracula_PySide6_or_PyQt6](https://github.com/Wanderson-Magalhaes/Modern_GUI_PyDracula_PySide6_or_PyQt6)
