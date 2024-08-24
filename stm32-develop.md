@@ -175,4 +175,87 @@ download:
      ```
    - 可以在 GDB 中设置断点、单步执行代码、检查寄存器和内存等。
 
+# HAL库
+- [野火STM32 HAL库开发](https://doc.embedfire.com/mcu/stm32/f103/hal_general/zh/latest/index.html)（有对应的PDF在apple books）
+
+![stm32软件架构](stm32-develop.assets/stm32软件架构.png)
+## C 语言对寄存器的封装
+这部分就是浅尝辄止的了解一下HAL库的工作，就不深入了解重复造轮子了。（有时间还是要造一遍）
+### 宏定义封装地址
+这当然不是最终的封装，因为还是有大量位操作。
+```c
+// 外设基地址
+define PERIPH_BASE ((unsigned int)0x40000000)
+
+// 总线基地址
+define APB1PERIPH_BASE PERIPH_BASE
+define APB2PERIPH_BASE (PERIPH_BASE + 0x00010000)
+define AHBPERIPH_BASE (PERIPH_BASE + 0x00020000)
+
+// GPIO 外设基地址
+define GPIOA_BASE (APB2PERIPH_BASE + 0x0800)
+define GPIOB_BASE (APB2PERIPH_BASE + 0x0C00)
+define GPIOC_BASE (APB2PERIPH_BASE + 0x1000)
+define GPIOD_BASE (APB2PERIPH_BASE + 0x1400)
+define GPIOE_BASE (APB2PERIPH_BASE + 0x1800)
+define GPIOF_BASE (APB2PERIPH_BASE + 0x1C00)
+define GPIOG_BASE (APB2PERIPH_BASE + 0x2000)
+
+// 寄存器基地址，以GPIOB 为例
+define GPIOB_CRL (GPIOB_BASE+0x00)
+
+/* 控制GPIOB 引脚0 输出低电平(BSRR 寄存器的BR0 置1) */
+*(unsigned int *)GPIOB_BSRR = (0x01<<(16+0));
+
+/* 控制GPIOB 引脚0 输出高电平(BSRR 寄存器的BS0 置1) */
+*(unsigned int *)GPIOB_BSRR = 0x01<<0;
+unsigned int temp;
+
+/* 读取GPIOB 端口所有引脚的电平(读IDR 寄存器) */
+temp = *(unsigned int *)GPIOB_IDR;
+```
+
+### 结构体封装寄存器组
+```c
+typedef unsigned int uint16_t; /* 无符号16 位变量*/
+typedef unsigned short int uint32_t; /* 无符号32 位变量*/
+
+/* GPIO 寄存器列表“封装”为一个结构体 */
+typedef struct {
+uint32_t CRL; /*GPIO 端口配置低寄存器 地址偏移: 0x00 */
+uint32_t CRH; /*GPIO 端口配置高寄存器 地址偏移: 0x04 */
+uint32_t IDR; /*GPIO 数据输入寄存器 地址偏移: 0x08 */
+uint32_t ODR; /*GPIO 数据输出寄存器 地址偏移: 0x0C */
+uint32_t BSRR; /*GPIO 位设置/清除寄存器 地址偏移: 0x10 */
+uint32_t BRR; /*GPIO 端口位清除寄存器 地址偏移: 0x14 */
+uint16_t LCKR; /*GPIO 端口配置锁定寄存器 地址偏移: 0x18 */
+} GPIO_TypeDef;
+
+GPIO_TypeDef * GPIOx; //定义一个GPIO_TypeDef 型结构体指针GPIOx
+GPIOx = GPIOB_BASE; //把指针地址设置为宏GPIOB_BASE 地址
+GPIOx->IDR = 0xFFFF;
+GPIOx->ODR = 0xFFFF;
+
+uint32_t temp;
+temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
+```
+### 封装寄存器的位操作方法
+。。。
+
+
+
+
+
+## GPIO
+
+### 共阳极控制
+- [共阳极和共阴极接法的对比](https://blog.csdn.net/The_bad/article/details/130704983)
+简单来讲就是stm32（数据手册 I/O port characteristics）**STM32的驱动电流最大为20mA，其==负载电流==有限**。其他单片机的负载电流也同样是有限的。如果采用共阴极接法，如果LED的驱动电流大于20mA，STM32的驱动效果就会很差，LED不亮或者很微弱。
+
+
+
+# 具体项目示例
+
+## ADC&中断
+- [使用STM32 HAL库驱动烟雾传感器的设计和优化](https://blog.csdn.net/weixin_66608063/article/details/134702311)
 
