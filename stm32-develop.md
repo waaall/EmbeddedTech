@@ -57,12 +57,35 @@
 首先，需要安装以下工具：（别忘了检查是否加入环境变量）
 - [STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)：用于生成初始化代码。
 - [GNU Arm Embedded Toolchain Downloads](https://developer.arm.com/downloads/-/gnu-rm)：用于交叉编译编译代码。
-- [OpenOCD](https://openocd.org/pages/getting-openocd.html)：用于烧录和调试。
-- [STlink驱动](https://www.st.com.cn/zh/development-tools/stsw-link009.html)：用于烧录。
-- **GCC & Make & git**：用于管理构建过程（可选，如果使用 `Makefile`）。不同操作系统的开发机器有所不同，windows安装mingw64，mac就是xcode，linux则是build-essential。
+- [OpenOCD](https://openocd.org/pages/getting-openocd.html)：用于烧录和调试。或者[pyocd](https://pyocd.io/docs/)
+- [STlink驱动](https://www.st.com.cn/zh/development-tools/stsw-link009.html)：用于烧录。或者[cmsis-DAP-v2](https://arm-software.github.io/CMSIS_5/DAP/html/dap_install.html)（不需要驱动）
+- **GCC & Make & git**：用于管理构建过程（可选，如果使用 `Makefile`）。不同操作系统的开发机器有所不同，windows安装msys2安装mingw64，mac就是xcode，linux则是build-essential。
 - vscode或者sublime用于写代码：更推荐vscode用来写一些有一定体量的工程化代码，sublime更轻量功能也更少一些。
+
+### gcc-arm-embedded 和 arm-none-eabi-gcc 区别
+`gcc-arm-embedded` 和 `arm-none-eabi-gcc` 都是用于编译ARM架构嵌入式系统代码的编译器工具链，它们之间的主要区别如下：
+
+1. **维护者和发布渠道**:
+   - `gcc-arm-embedded`: 由Arm（原ARM公司）官方发布和维护，通常会在[Arm Developer网站](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm)上发布。它通常被视为官方推荐的工具链版本。
+   - `arm-none-eabi-gcc`: 这是一个通用的名称，通常指的是GNU Arm Embedded Toolchain。它可以通过多种渠道获取，比如通过Linux的包管理器（如APT）安装，也可以通过其他工具链发行版本获取，如通过ARM的官网下载或者直接通过GNU的官方工具链仓库获取。
+
+2. **发行版本和更新频率**:
+   - `gcc-arm-embedded`: Arm官方发布的版本通常经过特定的测试，并且针对特定的硬件架构进行优化和稳定性验证。更新频率可能与 `arm-none-eabi-gcc` 略有不同，通常会提供一些针对性优化。
+   - `arm-none-eabi-gcc`: 这个版本通常跟随GCC的官方发布节奏更新，可能会更频繁地获得更新和新特性，但也可能包含一些实验性功能。
+
+3. **安装方式**:
+   - `gcc-arm-embedded`: 通常通过下载预构建的二进制文件安装，或者通过一些IDE（如STM32CubeIDE）集成的工具链安装。
+   - `arm-none-eabi-gcc`: 可以通过Linux发行版的包管理器直接安装（如通过 `apt-get install gcc-arm-none-eabi`），也可以通过其他方式获取。
+
+4. **支持的功能和优化**:
+   - `gcc-arm-embedded`: 可能包含一些ARM官方特有的优化和补丁，专门用于特定的ARM芯片。
+   - `arm-none-eabi-gcc`: 作为GCC的一部分，提供了更广泛的GCC特性，适用于更广泛的使用场景，但某些特定优化可能不如`gcc-arm-embedded`专注。
+
+总体来说，`gcc-arm-embedded` 更加偏向于官方提供的ARM嵌入式开发工具链，经过ARM官方的优化和测试。`arm-none-eabi-gcc` 则是一个通用的工具链版本，可能包含更多GCC的特性和最新的更新，但优化上未必专注于某些ARM芯片。
+
+对于大多数嵌入式开发项目，尤其是针对ARM Cortex-M系列开发时，选择 `gcc-arm-embedded` 会更为稳妥，因为这是经过官方认证的工具链。
 #### vscode config
-可以设置个`.vscode`文件夹，然后设置上`settings.json`、`c_cpp_properties.json`、`tasks.json`和`launch.json`。不用整这些，直接打开vscode中的terminal然后make就行（make和交叉编译的exe文件夹都要加入环境变量）。 
+可以设置个`.vscode`文件夹，然后设置上`settings.json`、`c_cpp_properties.json`、`tasks.json`和`launch.json`。不用整这些（`c_cpp_properties.json`还是要的，不然vscode找不到函数/变量的引用），直接打开vscode中的terminal然后make就行（make和交叉编译的exe文件夹都要加入环境变量）。 
 ```json
 // tasks.json
 {
@@ -94,6 +117,8 @@
         }
     ]
 }
+
+// c_cpp_properties.json
 
 ```
 ### 2. 使用 STM32CubeMX 配置项目
@@ -127,6 +152,10 @@
      arm-none-eabi-objcopy -O binary main.elf main.bin
      ```
    - 编译得到一个二进制文件（如 `.elf` 或 `.bin`）。
+#### makefile添加新的代码文件
+在makefile里面修改两处地方：`C_SOURCES`和`C_INCLUDES`。
+在`C_SOURCES`里面添加你`.c`文件的相对路径，在`C_INCLUDES`中添加`.h`文件的所在目录的相对路径（需要加`-I`前缀）。
+ 
 
 ### 5. 烧录代码
 1. **连接开发板**：
@@ -161,6 +190,9 @@ download:
    - 这将把 `main.elf` 文件烧录到 STM32 微控制器中，并复位芯片。
 
 ### 6. 调试
+- [opocd+GDB调试stm32](http://116.205.174.47/2023/04/04/linux/arm/stm32-openocd-gdb/095427/)
+
+![GDB调试流程](stm32-develop.assets/GDB调试流程.png)
 1. **启动调试会话**：
    - 使用 GDB（GNU 调试器）来连接 OpenOCD 进行调试。首先启动 OpenOCD：
      ```sh
@@ -176,7 +208,7 @@ download:
    - 可以在 GDB 中设置断点、单步执行代码、检查寄存器和内存等。
 
 # HAL库
-- [野火STM32 HAL库开发](https://doc.embedfire.com/mcu/stm32/f103/hal_general/zh/latest/index.html)（有对应的PDF在apple books）
+- [野火STM32 HAL库开发](https://doc.embedfire.com/mcu/stm32/f103/hal_general/zh/latest/index.html)（有对应的PDF在apple books）但是最好先看手册（官网有中文版比如M0的PDF在apple books）查资料，这个野火的教程不适合入门，一个是对基本原理不讲或讲的太杂太细，二是有大量的宏定义，反而让初学者缕不清HAL库的函数调用。
 
 ![stm32软件架构](stm32-develop.assets/stm32软件架构.png)
 ## C 语言对寄存器的封装
@@ -242,16 +274,44 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 ### 封装寄存器的位操作方法
 。。。
 
+## 时钟
+- [# STM32CubeMX使用 之“吃透RCC”](https://www.bilibili.com/video/BV1Qe411W7rv/)
+内部时钟，外部高速/低速时钟的设置。设置外部时钟首先需要开发版或者电路板按照芯片datasheet正确连接了外部晶振。然后在CubeMX中(Pinout&config---sys中)开启，然后在Clock config页面中选择设置等，具体看视频链接。
+
+## 中断
+- [STM32 CubeMX外部中断EXTI](https://www.bilibili.com/video/BV12Q4y1K74V/)
+上述链接视频讲解得不错，比如讲到了函数`void HAL_GPIO_EXIT_Callback(uint16_t GPIO_Pin)`是HAL库的一个弱函数(__weak)，我们是重写。还有在STM32CubeMX中如何设置实现GPIO的外部中断。
+
+## 定时器
+定时器一定要与中断配合才有意义。stm32有几类不同的定时器，
+
+### 基本定时器操作
+#### 1. CubeMX
+1.1 tim2(其中一个通用定时器)，Clock Source选择internal clock 
+1.2 Counter Settings 
+#### 2. 代码
+![](stm32-develop.assets/stm32_HAL_定时器开关函数.jpg)
 
 
-
+### 定时器问题
+#### 定时器中断无法使用HAL_Delay
+- [](https://blog.csdn.net/m0_57147943/article/details/123518122)
 
 ## GPIO
+
+### IO的硬件原理
+[STM32CubeMX使用-吃透IO口](https://b23.tv/hyxZ4tR)
+上述链接的视频比较简单清楚的讲解了io的硬件原理，可以简单的理解上下拉电阻的优缺点（优点抗干扰能力强，缺点被上拉/下拉电阻分压导致高低电平分压而），如何复用IN/OUT、推挽与开漏的区别等问题，结构图如下：
+![](stm32-develop.assets/stm32IO硬件结构示意图.png)
 
 ### 共阳极控制
 - [共阳极和共阴极接法的对比](https://blog.csdn.net/The_bad/article/details/130704983)
 简单来讲就是stm32（数据手册 I/O port characteristics）**STM32的驱动电流最大为20mA，其==负载电流==有限**。其他单片机的负载电流也同样是有限的。如果采用共阴极接法，如果LED的驱动电流大于20mA，STM32的驱动效果就会很差，LED不亮或者很微弱。
 
+### 如何配置GPIO功耗低
+- [GPIO模式选择对低功耗的影响](https://www.wpgdadatong.com.cn/blog/detail/71252)
+- [STM32低功耗模式下GPIO如何配置最节能？](https://bbs.huaweicloud.com/blogs/234482)
+简单来讲就是尽量不要GPIO配置成悬空模式，不用做通信的引脚尽量设置低速等。
 
 
 # 具体项目示例
