@@ -539,8 +539,173 @@ self._engine.load('qrc:/ui/SciHubEVA.qml')
 
 使用 `qrc` 文件管理资源文件的一个好处就是不需要担心各种相对路径和绝对路径带来的找不到文件的错误，但同时一个缺点是当资源文件更新后，需要运行 `pyrcc5 SciHubEVA.qrc -o scihub_resources.py` 更新资源，同时还需要在主程序代码中引入生成的 Python 资源代码。
 
-## [界面线程分离](https://www.cnblogs.com/zach0812/p/11426719.html)
 
+## 多进程与多线程
+
+
+### python多进程
+- [廖雪峰-多进程](https://liaoxuefeng.com/books/python/process-thread/process/index.html)
+如果要启动大量的子进程，可以用进程池的方式批量创建子进程：
+
+```python
+from multiprocessing import Pool
+import os, time, random
+
+def long_time_task(name):
+    print('Run task %s (%s)...' % (name, os.getpid()))
+    start = time.time()
+    time.sleep(random.random() * 3)
+    end = time.time()
+    print('Task %s runs %0.2f seconds.' % (name, (end - start)))
+
+if __name__=='__main__':
+    print('Parent process %s.' % os.getpid())
+    p = Pool(4)
+    for i in range(5):
+        p.apply_async(long_time_task, args=(i,))
+    print('Waiting for all subprocesses done...')
+    p.close()
+    p.join()
+    print('All subprocesses done.')
+```
+
+执行结果如下：
+
+```plain
+Parent process 669.
+Waiting for all subprocesses done...
+Run task 0 (671)...
+Run task 1 (672)...
+Run task 2 (673)...
+Run task 3 (674)...
+Task 2 runs 0.14 seconds.
+Run task 4 (673)...
+Task 1 runs 0.27 seconds.
+Task 3 runs 0.86 seconds.
+Task 0 runs 1.41 seconds.
+Task 4 runs 1.91 seconds.
+All subprocesses done.
+```
+### python多线程只能单核？用它还有啥意义？
+- [ 廖雪峰-多线程](https://liaoxuefeng.com/books/python/process-thread/thread/index.html)
+- [python 多线程只能用一个核心](https://blog.51cto.com/u_12959/8988101)
+
+  为什么python的多线程不能利用多核CPU，但是咱们在写代码的时候，多线程的确是在并发，而且还比单线程快。
+原因：
+因为GIL，python只有一个GIL，运行python时，就要拿到这个锁才能执行，在遇到！/O 操作时会释放这把锁。
+
+#### 1. 避免'卡死'
+和计算机最开始出现进程管理的原因一样：比如UI调用了一个计算的类方法，这时候我们看起来就整个都卡死，等他结束才能干其他的，如果你开一个线程处理它，那就回调用系统的线程管理（也有可能是自己写的）让每个线程运行一段时间就让给线程队列的其他线程。这样我就能在计算“过程中”干其他的事。
+这好像看起来使得我的计算任务反而变慢了很多，不一定，看下文：
+#### 2. 计算密集型 vs. IO密集型
+  为什么python的多线程不能利用多核CPU，但是咱们在写代码的时候，多线程的确是在并发，而且还比单线程快。
+原因：
+因为GIL，python只有一个GIL，运行python时，就要拿到这个锁才能执行，在遇到I/O 操作时会释放这把锁。
+如果是纯计算的程序，没有I/O操作，解释器会每隔100次操作就释放这把锁，让别的线程有机会 执行（这个次数可以来调整）同一时间只会有一个获得GIL线程在跑，其他线程都处于等待状态
+1、如果是CPU密集型代码（循环、计算等），由于计算工作量多和大，计算很快就会达到100，然后触发GIL的释放与在竞争，多个线程来回切换损耗资源，
+所以在多线程遇到CPU密集型代码时，单线程会比较快
+2、如果是I0密集型代码（文件处理、网络爬虫），开启多线程实际上是并发（不是并行），I0操作会进行I0等待，线程A等待时，自动切换到线程B，这时候效率就高了。
+
+### python异步I/O
+- [廖雪峰-使用asyncio](https://liaoxuefeng.com/books/python/async-io/asyncio/index.html)
+
+asyncio 本身并不能自动判断哪些代码是需要进行 I/O 操作的。它只能调度那些显式地通过 await 关键字标识出来的异步任务。因此，如果你的 image_handler 函数中没有 await 语句，即使存在实际的 I/O 操作（如文件读取、网络请求等），asyncio 也无法自动识别并将它们非阻塞地调度。
+#### asyncio 依赖显式的 await
+1. **await** **的作用**：
+• await 是用来暂停当前协程的执行并等待一个可等待对象（如异步 I/O 操作、协程或 Future）完成。只有通过 await，asyncio 的事件循环才能在任务之间切换。
+
+2. **没有** **await** **的异步函数行为**：
+• 如果 image_handler 中没有 await，整个函数会同步执行，即便它是一个 async def 定义的函数，也会像普通的同步函数一样运行完毕而不会让出控制权。
+• 这意味着，即使你使用 asyncio.gather() 调度多个 image_handler，它们实际上会顺序执行，而不是并发执行。
+
+3. **不能自动识别同步 I/O**：
+• asyncio 不能自动识别和管理那些没有 await 标识的同步 I/O 操作。像 Image.open() 或 file.read() 这种传统的同步 I/O 操作，asyncio 无法对其进行非阻塞处理。
+
+#### 如何确保真正的异步 I/O
+为了让 asyncio 正确处理 I/O 操作并实现异步执行，需要确保以下几点：
+
+1. **使用支持异步的库**：
+• 使用支持异步的 I/O 库，比如 aiohttp 进行异步网络请求，aiofiles 进行异步文件读写。这些库的 I/O 操作本身就是异步的，可以被 await，从而让 asyncio 正确调度。
+
+2. **显式使用** **await** **语句**：
+• 在 image_handler 中，任何需要异步执行的操作都必须通过 await 调用。没有 await，事件循环无法在这些操作期间切换到其他任务。
+
+### ThreadPoolExecutor、QThread 和 threading.Thread
+ThreadPoolExecutor、QThread 和 threading.Thread 是 Python 中用于多线程编程的不同工具，它们在使用场景、实现方式和功能上有一些重要的区别和各自的优缺点。以下是它们的详细比较：
+
+**1. ThreadPoolExecutor**
+• **简介**：ThreadPoolExecutor 是 Python 标准库 concurrent.futures 模块中的一个高级 API，用于创建和管理线程池。它简化了多线程的实现，适合需要重复执行相似任务的场景。
+• **特点**：
+
+• **线程池管理**：自动管理线程的创建、销毁以及任务的调度。
+• **简单易用**：使用方便，通过提交任务来管理线程，无需手动创建和管理每个线程。
+• **易于扩展**：支持任务的结果获取、超时、取消等高级功能。
+• **适用于 I/O 密集型任务**：如文件读写、网络请求等。
+
+• **使用场景**：
+• 批量任务处理，如图像处理、网络请求、文件 I/O 等。
+• 需要管理大量短时间任务时，通过线程池提高效率。
+
+• **优点**：
+• 简化多线程编程。
+• 线程池复用，避免频繁创建销毁线程带来的开销。
+• 提供 Future 对象用于检查任务状态、获取结果等。
+
+• **缺点**：
+• 不适用于需要高度自定义线程行为的场景。
+• 无法方便地与 PyQt 的信号槽机制集成。
+
+**2. QThread**
+• **简介**：QThread 是 PyQt/PySide 中的线程类，专为与 Qt 框架集成的多线程任务设计，支持与 Qt 的信号和槽机制交互。
+
+• **特点**：
+• **信号槽机制**：QThread 与 Qt 的信号槽系统无缝集成，适合 GUI 应用中使用。
+• **事件循环**：可以在 QThread 中运行事件循环，适合需要处理异步事件的场景。
+• **Qt 集成**：与 PyQt/PySide GUI 完美结合，方便更新界面。
+
+• **使用场景**：
+• 需要在 Qt 应用中运行后台任务，同时更新 GUI 的场景。
+• 在 GUI 中处理长时间任务而不阻塞主线程。
+
+• **优点**：
+• 与 PyQt/PySide 的 GUI 组件集成良好，支持异步信号与槽的连接。
+• 适用于 GUI 应用，处理后台任务并且更新界面。
+
+• **缺点**：
+• 依赖于 PyQt/PySide，不适用于独立的多线程需求。
+• 使用相对复杂，尤其在管理线程生命周期和事件时。
+
+**3. threading.Thread**
+• **简介**：threading.Thread 是 Python 标准库中的低级线程类，提供了直接的多线程控制能力，可以完全自定义线程的行为。
+
+• **特点**：
+• **低级控制**：允许创建和管理独立的线程，提供高度自定义能力。
+• **共享全局变量**：多个线程可以共享全局变量和资源。
+• **直接控制**：可以控制线程的启动、停止和退出。
+
+• **使用场景**：
+• 需要高度自定义的线程行为。
+• 适合简单的并发任务，或在非 GUI 程序中使用。
+
+• **优点**：
+• 高度灵活，能够完全控制线程的行为。
+• 适用于各种不依赖于特定框架的多线程应用。
+
+• **缺点**：
+• 需要手动管理线程的生命周期，增加了编程复杂度。
+• 无法自动管理线程池，需要自己控制线程的数量和调度。
+
+**总结与对比**
+• **ThreadPoolExecutor** 适合需要管理大量相似任务的场景，提供了简单的线程池管理和任务调度。
+• **QThread** 是与 Qt 框架紧密集成的线程类，适用于 GUI 应用，能够方便地处理后台任务和界面更新。
+• **threading.Thread** 提供了最大程度的控制，适合需要高度定制化的多线程任务，但需要手动管理线程的各个方面。
+
+选择哪个工具取决于应用场景和具体需求，如果是与 PyQt 的 GUI 集成，使用 QThread 是最佳选择；如果只是需要简单的线程池管理，ThreadPoolExecutor 更为方便；而 threading.Thread 适合那些需要完全控制线程的场景。
+
+### [界面线程分离](https://www.cnblogs.com/zach0812/p/11426719.html)
+#### 使用Qthread单独
+
+#### 使用threading
 写 GUI 应用的一个重要问题就是界面线程的分离，需要把耗时的业务逻辑摘出来，单独作为一个线程运行，这样才不会造成界面的“假死”情况。`scihub_api.py` 中的 `SciHubAPI` 作为下载文章的主类，下载过程相对耗时。因为其既需要 Qt 中的 `tr()` 函数，也需要线程，通过 Python 的多继承，`SciHubAPI` 类构造如下：
 
 ```python
@@ -619,6 +784,21 @@ if __name__ == '__main__':
         rate.value = i
 ```
 
+
+## 传递引用变量的危险
+**可变对象作为默认参数的陷阱**：在 Python 中，默认参数是函数对象的属性，会在函数定义时被评估一次。因此，如果你将一个可变对象（如列表、字典等）作为默认参数，它会在所有实例之间共享。如果在某个实例中修改了这个列表，会影响所有其他实例。这是一个常见的陷阱。
+```python
+class SplitColors:
+    def __init__(self, colors=['R', 'G', 'B']):
+        self.colors = colors
+
+a = SplitColors()
+b = SplitColors()
+
+a.colors.append('X')
+print(b.colors)  # 输出 ['R', 'G', 'B', 'X']，b.colors 也受到了影响
+```
+
 ## 控件为什么要传递self进去
 
 在 PySide 中，`QPlainTextEdit` 控件的构造函数可以接受一个父级控件作为参数。`self` 通常指的是当前的主窗口或父级窗口。在大多数情况下，将 `self` 作为参数传递给 `QPlainTextEdit` 的构造函数是为了设置它的父级控件，这样做有以下几个好处：
@@ -675,6 +855,77 @@ if __name__ == "__main__":
 ### 总结
 
 将 `self` 传递给控件的构造函数是为了确保该控件与其父窗口或容器控件正确关联，确保它在 UI 层级结构中正确显示，并且简化内存和事件管理。这是 PySide 和 Qt 中常见的设计模式，能使得控件的行为更加直观和易于管理。
+
+## 打包
+pyinstaller用户打包python程序
+
+```python
+import subprocess
+import sys
+
+def install_requirements():
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+
+def build_executable():
+    # 检测操作系统
+    current_platform = platform.system()
+
+    if current_platform == "Windows":
+        # Windows 平台的 PyInstaller 命令
+        subprocess.check_call([sys.executable, "-m", "PyInstaller",
+                               "--onedir",  # 生成一个文件夹,内部包含所有运行所需文件
+                               "--windowed",
+                               "--collect-submodules=pydicom", # 确保 pydicom 所需模块被包含
+                               "--add-data", "libs/openh264-1.8.0-win64.dll;libs",  # dll添加到 libs 文件夹
+                               "--add-data", "libs/openh264-1.8.0-win64.dll;.",  # dll添加到 exe 同一目录
+                               "--name=Branden_RD_Tool",
+                               "main.py"])
+    elif current_platform == "Darwin":
+        # macOS 平台的 PyInstaller 命令
+        subprocess.check_call([sys.executable, "-m", "PyInstaller",
+                               "--onefile",  # 生成一个单独的可执行文件
+                               "--windowed",
+                               "--collect-submodules=pydicom", # 确保 pydicom 所需模块被包含
+                               "--name=Branden_RD_Tool",
+                               "main.py"])
+    else:
+        try:
+            subprocess.check_call([sys.executable, "-m", "PyInstaller",
+                                   "--onefile",  # 生成一个单独的可执行文件
+                                   "--windowed",
+                                   "--icon=/resources/branden.ico",  # 图标路径
+                                   "--add-data", "/resources/branden.ico:./",  # 添加数据
+                                   "--hidden-import=pydicom",  # 确保 pydicom 模块被包含
+                                   "--collect-submodules=pydicom",
+                                   "--name=Branden_RD_Tool",
+                                   "main.py"])
+        raise Exception("Unsupported operating system")
+
+
+if __name__ == "__main__":
+    install_requirements()
+    build_executable()
+```
+### os.name和platform.system
+os.name 和 platform.system() 都可以用来获取操作系统的信息，但它们提供的信息和用途有所不同：
+**os.name**
+• **返回值**: os.name 返回的是一个简单的字符串，用来标识操作系统的类型：
+• 'posix'：表示类 Unix 系统，如 Linux 和 macOS。
+• 'nt'：表示 Windows 系统。
+• 'java'：表示在 Java 平台上运行。
+• **用途**: os.name 主要用于判断操作系统的类型，以决定执行特定的操作。例如，某些操作系统可能需要不同的路径分隔符或其他特定处理。
+
+**platform.system()**
+• **返回值**: platform.system() 返回的是一个字符串，表示操作系统的名称：
+• 'Linux'：表示 Linux 系统。
+• 'Darwin'：表示 macOS 系统。
+• 'Windows'：表示 Windows 系统。
+• 'Java'：表示在 Java 平台上运行。
+• **用途**: platform.system() 提供了更详细的信息，通常用于需要操作系统名称的情况。例如，某些库或工具可能需要知道具体的操作系统名称以便进行更精确的处理。
+
+**选择使用场景**
+• **使用** **os.name**: 如果你只需要区分类 Unix 系统（如 Linux 和 macOS）和 Windows 系统，可以使用 os.name。它提供的信息较少，但足以区分主要的操作系统类别。
+• **使用** **platform.system()**: 如果你需要具体的操作系统名称来进行更精细的操作（例如，执行特定于操作系统的命令或配置），platform.system() 提供了更详细的信息。
 
 # 开源项目分析
 
@@ -808,3 +1059,57 @@ if __name__ == '__main__':
 在这个代码中，我们创建了一个 `QSerialPort` 实例并设置了串口名称和波特率，然后我们每秒读取一次串口的数据并将其添加到 `QTextEdit` 控件中。
 
 同样，代码中的串口参数（'COM3', QSerialPort.Baud9600）是示例值，你需要根据你的硬件设置进行修改。
+
+### 问题3  嵌套循环I/O的堵塞优化
+我想要在函数self.selected_dirs_handler中循环处理多个其中的self._data_dir_handler，在函数self._data_dir_handler中循环处理多个其中的data_handler，还要在data_handler中循环处理多个其中的image_handler，其中每个image_handler都进行几次I/O操作，这种情况如何优化I/O延迟？
+
+多线程或者异步I/O，但是异步I/O需要对应的I/O操作函数都要支持（一般都是不支持的）
+所以简单来讲就是多线程设置更简单一些，但是异步I/O开销更小。具体还要看上文中的文档。
+
+### 问题4 检查文件名后缀
+`os.path.splitext(f)[1].lower() in self.suffixs`和
+`any(f.endswith(suffix) for suffix in self.suffixs)`
+这两句有什么区别?
+这两句代码都用于检查文件的扩展名是否在指定的后缀列表中，但它们的实现方式和适用场景略有不同。以下是两者的区别和适用场景：
+
+1. **`os.path.splitext(f)[1].lower() in self.suffixs`**：
+   ```python
+   # 使用 splitext 分离文件名和后缀，并检查后缀是否在指定的列表中
+   result = os.path.splitext(f)[1].lower() in self.suffixs
+   ```
+   **实现方式**：
+   - `os.path.splitext(f)[1]`：将文件名 `f` 分割为主文件名和扩展名，返回扩展名部分。
+   - `.lower()`：将扩展名转换为小写，确保比较不区分大小写。
+   - `in self.suffixs`：检查扩展名是否在指定的 `self.suffixs` 列表中。
+   **适用场景**：
+   - 适合用来匹配明确的、标准化的扩展名（例如 `.jpg`, `.png`, `.dcm`）。
+   - 不适用于检查复杂的后缀模式（例如多个后缀或不标准的文件名）。
+   **优点**：
+   - 简单直接，清晰明了，适合精确匹配标准文件扩展名。
+   - 处理 `.lower()` 保证了不区分大小写的匹配。
+   **缺点**：
+   - 仅能匹配文件的扩展名，不能匹配更复杂的模式。
+
+2. **`any(f.endswith(suffix) for suffix in self.suffixs)`**：
+   ```python
+   # 使用 endswith 逐个检查文件名是否以指定的后缀结尾
+   result = any(f.endswith(suffix) for suffix in self.suffixs)
+   ```
+   **实现方式**：
+   - `f.endswith(suffix)`: 检查文件名 `f` 是否以某个 `suffix` 结尾。
+   - `any(...)`：如果 `f` 以列表中的任意一个后缀结尾，则返回 `True`。
+   **适用场景**：
+   - 适合匹配各种复杂的文件名结尾模式，可以包括多种后缀、无扩展名或非标准的文件命名方式。
+   - 允许匹配更灵活的文件名，如包含多个点的文件名（例如 `.tar.gz`、没有扩展名的文件等）。
+   **优点**：
+   - 更灵活，能够匹配复杂文件名和非标准扩展名。
+   - 可以处理文件名中多个后缀或特殊格式的文件（如 `backup.tar.gz`）。
+   **缺点**：
+   - 需要显式地列出所有可能的后缀，容易出错，特别是当后缀种类较多时。
+
+- **`os.path.splitext()` 更精确和清晰**，适合标准化的扩展名检查。它分割文件名并直接检查扩展名部分，适合于比较明确、常规的文件格式。
+- **`any(f.endswith())` 更灵活和宽松**，适合处理各种复杂情况，包括非标准扩展名、多个后缀组合、或无扩展名的文件。
+**使用建议**：
+- 当需要精确匹配文件扩展名时，使用 `os.path.splitext()`。
+- 当需要更广泛和灵活的匹配时，使用 `any(f.endswith())`。
+

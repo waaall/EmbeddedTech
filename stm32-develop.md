@@ -190,8 +190,9 @@ download:
    - 这将把 `main.elf` 文件烧录到 STM32 微控制器中，并复位芯片。
 
 ### 6. 调试
+- [gdb 调试利器](https://linuxtools-rst.readthedocs.io/zh-cn/latest/tool/gdb.html)
 - [opocd+GDB调试stm32](http://116.205.174.47/2023/04/04/linux/arm/stm32-openocd-gdb/095427/)
-
+- 
 ![GDB调试流程](stm32-develop.assets/GDB调试流程.png)
 1. **启动调试会话**：
    - 使用 GDB（GNU 调试器）来连接 OpenOCD 进行调试。首先启动 OpenOCD：
