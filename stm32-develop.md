@@ -314,6 +314,28 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 - [STM32低功耗模式下GPIO如何配置最节能？](https://bbs.huaweicloud.com/blogs/234482)
 简单来讲就是尽量不要GPIO配置成悬空模式，不用做通信的引脚尽量设置低速等。
 
+## flash
+- [环境参数持久化存储的应用开发](https://blog.csdn.net/tysonchiu/article/details/125788461)
+- [stm32永久保存参数](https://www.cnblogs.com/Bingley-Z/p/17463058.html)
+
+# 软件测试
+- [STM32 | 分享几个开源的测试框架](https://news.eeworld.com.cn/mcu/ic544312.html)
+- [googletest（C/C++）](https://github.com/google/googletest)
+
+## 单元测试
+
+
+## 集成测试
+- [集成测试概念讲解](https://www.cnblogs.com/hebendexiaomao/p/17548929.html)
+
+## 测试工具
+
+### stm32cubemonitor
+- [stm32cubemonitor](https://www.st.com.cn/zh/development-tools/stm32cubemonitor.html)
+
+
+### Unity
+- [Unity](https://github.com/ThrowTheSwitch/Unity)
 
 # 具体项目示例
 
