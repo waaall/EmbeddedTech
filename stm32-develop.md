@@ -192,7 +192,7 @@ download:
 ### 6. 调试
 - [gdb 调试利器](https://linuxtools-rst.readthedocs.io/zh-cn/latest/tool/gdb.html)
 - [opocd+GDB调试stm32](http://116.205.174.47/2023/04/04/linux/arm/stm32-openocd-gdb/095427/)
-- 
+- [stm32 vscode配置](https://zhuanlan.zhihu.com/p/468568448)
 ![GDB调试流程](stm32-develop.assets/GDB调试流程.png)
 1. **启动调试会话**：
    - 使用 GDB（GNU 调试器）来连接 OpenOCD 进行调试。首先启动 OpenOCD：
@@ -314,6 +314,187 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 - [STM32低功耗模式下GPIO如何配置最节能？](https://bbs.huaweicloud.com/blogs/234482)
 简单来讲就是尽量不要GPIO配置成悬空模式，不用做通信的引脚尽量设置低速等。
 
+
+## ADC
+要在STM32平台上使用内部ADC对外部引脚的模拟电压信号进行读入，并与特定阈值 `Sense_Threshold` 进行比对，可以按照以下步骤进行操作。
+
+### 1. CubeMX 配置
+
+1. **选择 MCU**：在 STM32CubeMX 中，选择你使用的 STM32 MCU，例如 STM32F4 系列。
+
+2. **配置外部引脚**：
+   - 打开**Pinout & Configuration**。
+   - 选择用于输入模拟信号的引脚，设置为 **Analog** 模式。例如，PA0 引脚可以设置为模拟输入。
+
+3. **启用 ADC 外设**：
+   - 打开**Peripherals**，在 **Analog** 下选择 **ADC** 并启用。
+   - 在 **Configuration** 中设置 **Resolution** 为你需要的分辨率（12-bit 通常够用），并选择采样时间。采样时间要根据应用需求和外部电路的特性来设置。
+   - 设置 **Regular Channel**，选择你配置为模拟输入的引脚作为 ADC 输入通道。
+
+4. **设置 ADC 的采样率**：
+   - 采样率的设置与心电信号中的 R 波脉宽有关。R 波的典型脉宽大约在 80 ms 左右，1/5 的采样周期为 16 ms，即你需要的采样率为大约 62.5 Hz。
+   - 在 CubeMX 中的 **ADC Regular Conversion Mode** 中，选择 **Continuous Conversion Mode** 以保持连续采样，并设置采样频率。
+
+5. **生成初始化代码**：完成配置后，点击 **Project** -> **Generate Code**，生成初始化代码。
+
+### 2. 代码实现
+
+在 CubeMX 生成的代码基础上进行修改，下面是 ADC 采样并与 `Sense_Threshold` 比较的主要逻辑：
+
+```c
+#include "main.h"
+
+#define SENSE_THRESHOLD 2000  // 根据你的实际应用设置合适的阈值
+
+// ADC Handle 定义
+extern ADC_HandleTypeDef hadc1;
+
+// 比对通过后调用的函数
+void Sensed_Handler(void) {
+    // 你的处理逻辑
+}
+
+// ADC 转换完成的回调函数
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc) {
+    if (hadc->Instance == ADC1) {
+        // 读取 ADC 值
+        uint32_t adc_value = HAL_ADC_GetValue(&hadc1);
+
+        // 与阈值比对
+        if (adc_value > SENSE_THRESHOLD) {
+            // 调用 Sensed_Handler 函数
+            Sensed_Handler();
+        }
+    }
+}
+
+int main(void) {
+    // 初始化代码
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_ADC1_Init();  // CubeMX 生成的初始化代码
+
+    // 启动 ADC 连续转换
+    HAL_ADC_Start_IT(&hadc1);
+
+    // 主循环
+    while (1) {
+        // 其他处理逻辑
+    }
+}
+```
+
+### 3. 代码解释
+- `HAL_ADC_Start_IT()` 用于启动 ADC 并在转换完成时触发中断。
+- `HAL_ADC_ConvCpltCallback()` 是 ADC 转换完成的回调函数，读取 ADC 值，并将其与 `Sense_Threshold` 比较。如果超过阈值，则调用 `Sensed_Handler()` 函数进行处理。
+
+### 4. 采样率的确定
+假设心电图中 R 波的典型脉宽大约为 80 毫秒。根据 Nyquist 定理，信号采样率应至少是信号频率的两倍以上，考虑到脉宽细节，我们选择采样率为脉宽的 1/5，即约 62.5 Hz。
+
+在实际应用中，你可以根据具体的心电信号情况调整采样率，同时确保 ADC 的采样频率满足所需的时间分辨率。
+
+### 5. 调整采样时间
+如果需要更快的采样时间，可以调整 CubeMX 中 ADC 的**采样时间**设置，选择较短的采样周期。根据 MCU 的时钟频率，采样时间影响整体的转换时间，确保总采样时间低于 16 ms。
+
+通过这些步骤，你可以实现 STM32 平台上的 ADC 信号采集和阈值检测功能。
+
+## DAC
+在 STM32 平台上使用 MCU 内部 DAC 对外部引脚输出指定范围的电压信号（0.1V - 1.5V），可以按照以下步骤进行操作。
+
+### 1. CubeMX 配置
+
+1. **选择 MCU**：打开 STM32CubeMX，选择你使用的 STM32 芯片型号。
+
+2. **配置 DAC 输出引脚**：
+   - 打开 **Pinout & Configuration**。
+   - 选择用于输出 DAC 信号的引脚（例如 PA4 或 PA5，具体引脚视你所选的 MCU 而定），并将其设置为 **DAC_OUT** 模式。
+
+3. **启用 DAC 外设**：
+   - 在 **Peripherals** 中找到 **DAC**，并启用它。
+   - 在 **Parameter Settings** 中设置 **Trigger** 为 **Software Trigger**，以便你可以在代码中手动控制 DAC 输出。
+   - 确保选择了 **Buffer Enable** 以使 DAC 输出稳定。
+
+4. **生成代码**：
+   - 完成配置后，点击 **Project** -> **Generate Code**，生成初始化代码。
+
+### 2. 代码实现
+
+生成代码后，你可以通过 HAL 库控制 DAC 输出指定范围的电压。假设你要输出 0.1V 到 1.5V 范围内的电压，下面是代码示例：
+
+```c
+#include "main.h"
+
+extern DAC_HandleTypeDef hdac;
+
+#define VREF 3.3  // 假设 Vref 为 3.3V
+#define DAC_RESOLUTION 4096  // 12位 DAC 分辨率
+
+// 计算 DAC 输出数据
+uint32_t VoltageToDACValue(float voltage) {
+    if (voltage < 0.0f) voltage = 0.0f;
+    if (voltage > VREF) voltage = VREF;
+    return (uint32_t)((voltage / VREF) * (DAC_RESOLUTION - 1));
+}
+
+// 设置 DAC 输出电压
+void SetDACOutput(float voltage) {
+    uint32_t dac_value = VoltageToDACValue(voltage);
+    HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, dac_value);
+    HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
+}
+
+int main(void) {
+    // 初始化代码
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_DAC_Init();  // CubeMX 生成的 DAC 初始化代码
+
+    // 设置 DAC 输出 0.1V 到 1.5V
+    SetDACOutput(0.1f);  // 输出 0.1V
+    HAL_Delay(1000);     // 延时 1 秒
+    SetDACOutput(1.5f);  // 输出 1.5V
+
+    // 主循环
+    while (1) {
+        // 其他逻辑
+    }
+}
+```
+
+### 3. 代码解释
+
+- **VoltageToDACValue** 函数将输入的电压值转换为 DAC 数字值。DAC 是基于参考电压 `VREF`（通常为 3.3V），并且有 12 位分辨率（0-4095）。因此，电压和 DAC 数值之间的转换公式为：
+  \[
+  DAC\_Value = \left( \frac{Voltage}{VREF} \right) \times (DAC\_Resolution - 1)
+  \]
+  其中 `DAC_Resolution` 为 4096，表示 12 位精度。
+
+- **SetDACOutput** 函数设置 DAC 的输出电压。该函数首先将电压转换为 DAC 的数值，然后通过 `HAL_DAC_SetValue()` 设置 DAC 输出。
+
+### 4. 详细步骤
+
+1. **使用 HAL_DAC_SetValue()** 控制 DAC 的输出电压，`DAC_ALIGN_12B_R` 表示右对齐的 12 位分辨率。
+
+2. **电压范围的设定**：
+   - 在此例中，你可以输出的最小电压为 0V，最大电压为参考电压（VREF），例如 3.3V。
+   - 你希望输出的电压范围是 0.1V 到 1.5V，通过代码中调用 `SetDACOutput()` 来控制。
+
+3. **延时与稳定**：
+   - 每次设置 DAC 输出时，通常需要加入延时（如 `HAL_Delay()`），以确保 DAC 输出的电压信号在物理引脚上稳定输出。
+
+### 5. 注意事项
+
+- **参考电压**：确保你的 MCU 使用的 VREF 为准确的 3.3V 或其他已知值，以便正确映射输出电压。
+- **DAC 精度**：根据你选择的 DAC 分辨率（通常为 12 位），输出的电压精度将受到限制。每个 DAC 数字值对应的最小电压变化为：
+  $$ \Delta V = \frac{VREF}{DAC\_Resolution} = \frac{3.3V}{4096} \approx 0.8mV $$ 
+
+- **电压范围限制**：你需要确保 DAC 输出的电压不超过硬件的电压范围，否则可能会导致误差或不稳定。
+
+通过这些步骤，你可以实现 STM32 平台上的 DAC 输出指定电压范围的功能。
+
+
 ## flash
 - [环境参数持久化存储的应用开发](https://blog.csdn.net/tysonchiu/article/details/125788461)
 - [stm32永久保存参数](https://www.cnblogs.com/Bingley-Z/p/17463058.html)
@@ -323,19 +504,22 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 - [googletest（C/C++）](https://github.com/google/googletest)
 
 ## 单元测试
-
+### Unity
+- [Unity](https://github.com/ThrowTheSwitch/Unity)
 
 ## 集成测试
 - [集成测试概念讲解](https://www.cnblogs.com/hebendexiaomao/p/17548929.html)
-
-## 测试工具
-
 ### stm32cubemonitor
 - [stm32cubemonitor](https://www.st.com.cn/zh/development-tools/stm32cubemonitor.html)
 
 
-### Unity
-- [Unity](https://github.com/ThrowTheSwitch/Unity)
+## 软硬件联调(功能测试)
+依据法规
+
+
+
+
+
 
 # 具体项目示例
 
