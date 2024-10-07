@@ -316,6 +316,8 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 
 
 ## ADC
+- [ADC教学视频-很好](https://www.bilibili.com/video/BV13vpSekEmA)
+[ADC设置](https://blog.csdn.net/qq_36347513/article/details/112850329)
 要在STM32平台上使用内部ADC对外部引脚的模拟电压信号进行读入，并与特定阈值 `Sense_Threshold` 进行比对，可以按照以下步骤进行操作。
 
 ### 1. CubeMX 配置
@@ -512,14 +514,8 @@ int main(void) {
 ### stm32cubemonitor
 - [stm32cubemonitor](https://www.st.com.cn/zh/development-tools/stm32cubemonitor.html)
 
-
 ## 软硬件联调(功能测试)
 依据法规
-
-
-
-
-
 
 # 具体项目示例
 
