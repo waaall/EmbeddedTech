@@ -1,6 +1,7 @@
 
 # 开发环境
 ## Reference
+###  网址/博客
 - [STM32开发环境搭建(ARM-GCC)](https://microdynamics.github.io/1.%20Breeze%20Mini四轴飞行器/2.2%20STM32开发环境搭建(ARM-GCC)/)
 - [windows开源STM32开发环境](https://blog.csdn.net/zhangfan2256/article/details/132196426)
 - [Windows 下构建 STM32 开发环境](https://wangyuyang.me/posts/windows下构建stm32开发环境/)
@@ -9,6 +10,12 @@
 - [STM32CubeMX](https://www.stmcu.com.cn/ecosystem/Cube/STM32cubemx)
 - [ STM32 下载器调试器——DAPLink](https://sspai.com/post/88682)
 - [VSCode STM32_development](https://stm32world.com/wiki/STM32_development_and_debugging_using_VSCode#google_vignette)
+### 视频教程
+- [keysking-stm32-全面](https://www.bilibili.com/video/BV1do4y1F7wt)
+- [铁头山羊-stm32-详细](https://www.bilibili.com/video/BV13vpSekEmA)
+- [宅sir带你飞-stm32-理论为主](https://www.bilibili.com/video/BV12Q4y1K74V/)
+- [遥想星空-stm32-MX应用为主](https://www.bilibili.com/video/BV1Wv411Y7KX)
+
 ## 开发环境配置
 不使用 IDE，而是通过命令行工具和其他独立工具进行 STM32开发，优点就是开源免费且无需担心法律风险，官网或者github下载无需担心安装包风险，有利于深入了解开发工具，缺点就是更费时。
 整个开发过程可以按照以下步骤进行：安装工具、开发、编译、烧录和调试。在这个流程中，完全依赖命令行工具和文本编辑器进行开发。STM32CubeMX 用于生成初始化代码，vscode用来写代码，armGNU 工具链用于编译代码，OpenOCD 用于烧录和调试。
@@ -285,11 +292,15 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 
 ## 定时器
 定时器一定要与中断配合才有意义。stm32有几类不同的定时器，
-
+- [stm32定时器原理](https://www.bilibili.com/video/BV16w4m1e7X7)
+- [stm32定时器使用](https://www.bilibili.com/video/BV1f54y1Y7Ls)
 ### 基本定时器操作
 #### 1. CubeMX
-1.1 tim2(其中一个通用定时器)，Clock Source选择internal clock 
-1.2 Counter Settings 
+1. tim2(其中一个通用定时器)，
+2. Clock Source选择internal clock 
+3. Counter Settings 
+
+
 #### 2. 代码
 ![](stm32-develop.assets/stm32_HAL_定时器开关函数.jpg)
 
