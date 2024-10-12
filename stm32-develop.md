@@ -94,39 +94,56 @@
 #### vscode config
 可以设置个`.vscode`文件夹，然后设置上`settings.json`、`c_cpp_properties.json`、`tasks.json`和`launch.json`。不用整这些（`c_cpp_properties.json`还是要的，不然vscode找不到函数/变量的引用），直接打开vscode中的terminal然后make就行（make和交叉编译的exe文件夹都要加入环境变量）。 
 ```json
-// tasks.json
+
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
-    "version": "2.0.0",
-    "tasks": [
+    "configurations": [
         {
-            "label": "build",
-            "type": "shell",
-            "command": "make",
-            "args": [
+            "cwd": "${workspaceRoot}",
+            "executable": "${workspaceFolder}/build/zx_pacemaker_beta0.4.elf",
+            "name": "Debug STM32",
+            "request": "launch",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "openocd",
+            "armToolchainPath": "/usr/share/gcc-arm-none-eabi-10.3-2021.10/bin",
+            "configFiles":[
+                "stlink-v2.cfg",
+                "stm32g4x.cfg"
             ],
-            "group": "build"
         },
-        {
-            "label": "download",
-            "type": "shell",
-            "command": "openocd",
-            "args": [
-                "-f",
-                "cmsis-dap.cfg",
-                "-f",
-                "stm32h7x.cfg",
-                "-c",
-                "program build/stm32h7_demo.elf verify reset exit"
-            ],
-            "group": "build"
-        }
     ]
 }
+// stlink-v2-1.cfg (在此使用stlink-v2，如果使用jlink将配置文件换成jlink的即可)
+// stm32f1x.cfg (在此我使用平台是基于GD32F103系列，与STM32F103系列相同操作)
 
 // c_cpp_properties.json
-
+{
+    "configurations": [
+        {
+            "name": "STM32",
+            // 注意下面这个指定好 gcc-arm 编译器后，c/c++ 插件会智能分析，不会按照桌面平台进行语义分析，一定要指明
+            "compilerPath": "/usr/share/gcc-arm-none-eabi-10.3-2021.10/bin/arm-none-eabi-gcc",
+            //编译参数可以从 makefile 里抄
+            "defines": [
+                // makefile中的C_DEFS，去掉D
+                "USE_HAL_DRIVER",
+                "STM32G431xx"
+            ],
+            "includePath": [
+                // 工程代码的头文件
+                "${workspaceFolder}/**"
+            ],
+            "compilerArgs": [
+                // makefile中的CFLAGS
+                "-mcpu=cortex-m4",
+                "-mfpu=fpv4-sp-d16",
+                "-mfloat-abi=hard",
+                "-mthumb"
+            ]
+        }
+    ],
+    "version": 4
+}
 ```
 ### 2. 使用 STM32CubeMX 配置项目
 1. **打开 STM32CubeMX - file**。
@@ -174,6 +191,7 @@
    - copy `your_openocd_dir/openocd/scripts/interface/stlink.cfg`and `your_openocd_dir/openocd/scripts/target/stm32l0.cfg` to your project folder.
    - 使用以下命令启动 OpenOCD：
      ```sh
+     # windows
      openocd -f stlink.cfg -f stm32l0.cfg -c init -c halt -c "flash write_image erase build/yourfile.bin 0x08000000" -c reset -c shutdown
      ```
 或者，写到makefile里，然后用make download命令运行。
@@ -192,7 +210,8 @@ download:
 3. **烧录代码**：
    - 在命令行中使用以下命令进行烧录：
      ```sh
-     openocd -f interface/stlink.cfg -f target/stm32l0.cfg -c "program main.elf verify reset exit"
+     # linux
+     openocd -f stlink-v2.cfg -f stm32g4x.cfg -c init -c "reset halt" -c "wait_halt" -c "flash write_image erase build/zx_pacemaker_beta0.4.elf" -c reset -c shutdown
      ```
    - 这将把 `main.elf` 文件烧录到 STM32 微控制器中，并复位芯片。
 
@@ -282,18 +301,19 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 ### 封装寄存器的位操作方法
 。。。
 
-## 时钟
+## 一 时钟
 - [# STM32CubeMX使用 之“吃透RCC”](https://www.bilibili.com/video/BV1Qe411W7rv/)
 内部时钟，外部高速/低速时钟的设置。设置外部时钟首先需要开发版或者电路板按照芯片datasheet正确连接了外部晶振。然后在CubeMX中(Pinout&config---sys中)开启，然后在Clock config页面中选择设置等，具体看视频链接。
 
-## 中断
+## 二 中断
 - [STM32 CubeMX外部中断EXTI](https://www.bilibili.com/video/BV12Q4y1K74V/)
 上述链接视频讲解得不错，比如讲到了函数`void HAL_GPIO_EXIT_Callback(uint16_t GPIO_Pin)`是HAL库的一个弱函数(__weak)，我们是重写。还有在STM32CubeMX中如何设置实现GPIO的外部中断。
 
-## 定时器
+## 三 定时器
 定时器一定要与中断配合才有意义。stm32有几类不同的定时器，
 - [stm32定时器原理](https://www.bilibili.com/video/BV16w4m1e7X7)
 - [stm32定时器使用](https://www.bilibili.com/video/BV1f54y1Y7Ls)
+
 ### 基本定时器操作
 #### 1. CubeMX
 1. tim2(其中一个通用定时器)，
@@ -309,7 +329,7 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 #### 定时器中断无法使用HAL_Delay
 - [](https://blog.csdn.net/m0_57147943/article/details/123518122)
 
-## GPIO
+## 四 GPIO
 
 ### IO的硬件原理
 [STM32CubeMX使用-吃透IO口](https://b23.tv/hyxZ4tR)
@@ -326,7 +346,7 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 简单来讲就是尽量不要GPIO配置成悬空模式，不用做通信的引脚尽量设置低速等。
 
 
-## ADC
+## 五 ADC
 - [ADC教学视频-很好](https://www.bilibili.com/video/BV13vpSekEmA)
 [ADC设置](https://blog.csdn.net/qq_36347513/article/details/112850329)
 要在STM32平台上使用内部ADC对外部引脚的模拟电压信号进行读入，并与特定阈值 `Sense_Threshold` 进行比对，可以按照以下步骤进行操作。
@@ -412,7 +432,7 @@ int main(void) {
 
 通过这些步骤，你可以实现 STM32 平台上的 ADC 信号采集和阈值检测功能。
 
-## DAC
+## 六 DAC
 在 STM32 平台上使用 MCU 内部 DAC 对外部引脚输出指定范围的电压信号（0.1V - 1.5V），可以按照以下步骤进行操作。
 
 ### 1. CubeMX 配置
@@ -508,7 +528,11 @@ int main(void) {
 通过这些步骤，你可以实现 STM32 平台上的 DAC 输出指定电压范围的功能。
 
 
-## flash
+## 七 通信
+
+
+
+## 八 Flash
 - [环境参数持久化存储的应用开发](https://blog.csdn.net/tysonchiu/article/details/125788461)
 - [stm32永久保存参数](https://www.cnblogs.com/Bingley-Z/p/17463058.html)
 
