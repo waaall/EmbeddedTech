@@ -70,6 +70,7 @@
 - vscode或者sublime用于写代码：更推荐vscode用来写一些有一定体量的工程化代码，sublime更轻量功能也更少一些。
 
 ### gcc-arm-embedded 和 arm-none-eabi-gcc 区别
+
 `gcc-arm-embedded` 和 `arm-none-eabi-gcc` 都是用于编译ARM架构嵌入式系统代码的编译器工具链，它们之间的主要区别如下：
 
 1. **维护者和发布渠道**:
@@ -91,7 +92,30 @@
 总体来说，`gcc-arm-embedded` 更加偏向于官方提供的ARM嵌入式开发工具链，经过ARM官方的优化和测试。`arm-none-eabi-gcc` 则是一个通用的工具链版本，可能包含更多GCC的特性和最新的更新，但优化上未必专注于某些ARM芯片。
 
 对于大多数嵌入式开发项目，尤其是针对ARM Cortex-M系列开发时，选择 `gcc-arm-embedded` 会更为稳妥，因为这是经过官方认证的工具链。
-#### vscode config
+
+#### mac & linux 编译工具安装
+```c
+// mac
+(xcode )
+brew install --cask gcc-arm-embedded
+brew install stlink
+
+//ubuntu
+sudo apt install build-
+sudo apt install stlink-tools
+```
+
+问题：
+[no "stdint.h" in arm-none-eabi-gcc(mac)](https://stackoverflow.com/questions/77249021/no-stdint-h-in-arm-none-eabi-gccmac)
+
+I found this to solve my issue.
+TLDR:
+Uninstall `arm-none-eabi-gcc` from brew and install the toolchain with:
+
+```c
+brew install --cask gcc-arm-embedded
+```
+### vscode config
 可以设置个`.vscode`文件夹，然后设置上`settings.json`、`c_cpp_properties.json`、`tasks.json`和`launch.json`。不用整这些（`c_cpp_properties.json`还是要的，不然vscode找不到函数/变量的引用），直接打开vscode中的terminal然后make就行（make和交叉编译的exe文件夹都要加入环境变量）。 
 ```json
 
@@ -211,9 +235,9 @@ download:
    - 在命令行中使用以下命令进行烧录：
      ```sh
      # linux
-     openocd -f stlink-v2.cfg -f stm32g4x.cfg -c init -c "reset halt" -c "wait_halt" -c "flash write_image erase build/zx_pacemaker_beta0.4.elf" -c reset -c shutdown
+     openocd -f stlink.cfg -f stm32g4x.cfg -c init -c "reset halt" -c "wait_halt" -c "flash write_image erase build/zx_pacemaker_beta0.4.elf" -c reset -c shutdown
      ```
-   - 这将把 `main.elf` 文件烧录到 STM32 微控制器中，并复位芯片。
+   - 这将把 `zx_pacemaker_beta0.4.elf` 文件烧录到 STM32 微控制器中，并复位芯片。
 
 ### 6. 调试
 #### vscode插件调试
@@ -319,12 +343,37 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 - [stm32定时器原理](https://www.bilibili.com/video/BV16w4m1e7X7)
 - [stm32定时器使用](https://www.bilibili.com/video/BV1f54y1Y7Ls)
 
+```c
+#define TIM_IT_Update                      ((uint16_t)0x0001)
+#define TIM_IT_CC1                         ((uint16_t)0x0002)
+#define TIM_IT_CC2                         ((uint16_t)0x0004)
+#define TIM_IT_CC3                         ((uint16_t)0x0008)
+#define TIM_IT_CC4                         ((uint16_t)0x0010)
+#define TIM_IT_COM                         ((uint16_t)0x0020)
+#define TIM_IT_Trigger                     ((uint16_t)0x0040)
+#define TIM_IT_Break                       ((uint16_t)0x0080)  
+```
+
+
+![](https://images2015.cnblogs.com/blog/1058788/201612/1058788-20161207161320538-1036494492.png)
+
+　　没有头绪，还是去查看stm32数据手册吧。
+
+TIM_IT_Update:更新中断，计数器向上溢出/向下溢出，计数器初始化(通过软件或者内部/外部触发) 
+
+TIM_IT_CC1~4：都是捕获/比较中断，貌似都是平等的，即输入捕获，输出比较
+
+TIM_IT_Trigger：触发事件(计数器启动、停止、初始化或者由内部/外部触发计数)
+
+使用的时候都是调用函数TIM_ITConfig()来使能指定的中断类型，调用TIM_GetITStatus()函数来查看是否有中断发生，入口参数都是平等的。
+
+可能就是不同的事件导致中断的发生略有不同
+
 ### 基本定时器操作
 #### 1. CubeMX
 1. tim2(其中一个通用定时器)，
 2. Clock Source选择internal clock 
 3. Counter Settings 
-
 
 #### 2. 代码
 ![](stm32-develop.assets/stm32_HAL_定时器开关函数.jpg)
@@ -332,7 +381,7 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 
 ### 定时器问题
 #### 定时器中断无法使用HAL_Delay
-- [](https://blog.csdn.net/m0_57147943/article/details/123518122)
+- [定时器中断无法使用HAL_Delay](https://blog.csdn.net/m0_57147943/article/details/123518122)
 
 ## 四 GPIO
 
@@ -353,8 +402,11 @@ temp = GPIOx->IDR; //读取GPIOB_IDR 寄存器的值到变量temp 中
 
 ## 五 ADC
 - [ADC教学视频-很好](https://www.bilibili.com/video/BV13vpSekEmA)
-[ADC设置](https://blog.csdn.net/qq_36347513/article/details/112850329)
+- [ADC设置](https://blog.csdn.net/qq_36347513/article/details/112850329)
+- [ADC模式](https://mcu.eetrend.com/blog/2021/100113230.html)
+- [ADC单次中断模式设置](https://www.cnblogs.com/lc-guo/p/17958496)
 要在STM32平台上使用内部ADC对外部引脚的模拟电压信号进行读入，并与特定阈值 `Sense_Threshold` 进行比对，可以按照以下步骤进行操作。
+
 
 ### 1. CubeMX 配置
 
@@ -544,6 +596,8 @@ int main(void) {
 #### 485
 
 什么是485硬件流控？
+#### modbus
+- [GitHub库Modbus-STM32-HAL-FreeRTOS](https://github.com/alejoseb/Modbus-STM32-HAL-FreeRTOS)
 
 ### 以太网口
 
@@ -578,3 +632,82 @@ int main(void) {
 ## ADC&中断
 - [使用STM32 HAL库驱动烟雾传感器的设计和优化](https://blog.csdn.net/weixin_66608063/article/details/134702311)
 
+
+# C语言的一些问题
+
+## memcpy会导致volatile失效
+memcpy或者memset会导致volatile声明失效。
+### 解决方案
+```c
+	volatile float Pace_Interval = 1000.0;
+    float temp_float_param = Pace_Interval;  // 定义一个通用的 float 变量
+    memcpy(&params_to_send[index], &temp_float_param, sizeof(temp_float_param));  // 使用 memcpy 复制
+```
+
+### 原因
+为什么对volatile修饰的变量调用memset函数，编译的时候会报错。当然，我是不知道为什么啦。之前没有遇到过嘛。不过我还是做了一点分析，我认为问题出在memset函数的实现上。一般情况下volatile关键字修饰的变量在编译的时候会取消编译优化，即每次使用变量时都会访问变量对应的地址，而不是将变量读入寄存器中连续使用。
+[引用自](https://www.cnblogs.com/wormarz/p/16554597.html)
+我写了个简单的代码测试了一下。大致如下
+
+```c
+#include <stdio.h>
+int main(void)
+{
+        volatile int a;
+        memset(&a,0,sizeof(int));
+}
+```
+
+编译出现了一个警告
+
+```csharp
+warning: passing argument 1 of ‘memset’ discards ‘volatile’ qualifier from pointer target type 
+```
+
+我的理解是这个volatile变量传入函数后volatile的特性会被丢掉。  
+为了研究为什么会这样，接下来我阅读了linux内核中memset的源码。
+
+```cpp
+void *memset(void *pdst, int c, unsigned int plen)
+{
+  /* Now we want the parameters in special registers.  Make sure the
+     compiler does something usable with this.  */
+
+  register char *return_dst __asm__ ("r10") = pdst;
+  register int n __asm__ ("r12") = plen;
+  register int lc __asm__ ("r11") = c;
+
+  .....
+}
+```
+
+上面这部分源码解答了我的疑惑，原来memset在执行过程中，强制把传入的地址放入了r10寄存器，之后也会直接通过连续操作寄存器来访问变量，这里就和volatile每次都要读取物理地址而不能连续使用寄存器内容的特性冲突了。
+
+
+# stm32的一些问题
+
+## 发送大端序、存储小端序
+这就导致发送的数据都是反着的，并不是整个数据帧都是反着，也不是每位都是反着，而是具体的数据（存储的变量）以字节为单位的反过来。举例如下：
+
+```c
+uint8_t frame_head = 0xEF;
+uint32_t data = 0x12345678;
+uint8_t send_buffer[5];
+
+// 放置帧头和数据
+send_buffer[0] = frame_head;  // 帧头在最开始
+memcpy(&send_buffer[1], &data, sizeof(data));
+
+// 发送
+HAL_UART_Transmit(&huart2, send_buffer, sizeof(send_buffer), HAL_MAX_DELAY);
+```
+接收到的数据为：
+```c
+0xEF 0x78 0x56 0x34 0x12
+```
+
+## 关于通信
+
+### 一定要注意清空缓冲区的时机
+- 早了就没数据或者数据不完整，完了数据不干净，即使有帧头帧尾也不好判断。
+- 注意递归调用的开端函数最后代码后执行（我就是在这里处理缓冲区发现没用）
