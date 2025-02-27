@@ -66,7 +66,7 @@
 - [GNU Arm Embedded Toolchain Downloads](https://developer.arm.com/downloads/-/gnu-rm)：用于交叉编译编译代码。
 - [OpenOCD](https://openocd.org/pages/getting-openocd.html)：用于烧录和调试。或者[pyocd](https://pyocd.io/docs/)
 - [STlink驱动](https://www.st.com.cn/zh/development-tools/stsw-link009.html)：用于烧录。或者[cmsis-DAP-v2](https://arm-software.github.io/CMSIS_5/DAP/html/dap_install.html)（不需要驱动）
-- **GCC & Make & git**：用于管理构建过程（可选，如果使用 `Makefile`）。不同操作系统的开发机器有所不同，windows安装msys2安装mingw64，mac就是xcode，linux则是build-essential。
+- **GCC & Make & git**：用于管理构建过程（可选，如果使用 `Makefile`）。不同操作系统的开发机器有所不同，windows安装msys2安装mingw64，mac就是xcode command line tools，linux则是build-essential。
 - vscode或者sublime用于写代码：更推荐vscode用来写一些有一定体量的工程化代码，sublime更轻量功能也更少一些。
 
 ### gcc-arm-embedded 和 arm-none-eabi-gcc 区别
@@ -96,12 +96,12 @@
 #### mac & linux 编译工具安装
 ```c
 // mac
-(xcode )
+(xcode command line tools)
 brew install --cask gcc-arm-embedded
 brew install stlink
 
 //ubuntu
-sudo apt install build-
+sudo apt install build-essentials
 sudo apt install stlink-tools
 ```
 
@@ -686,6 +686,117 @@ void *memset(void *pdst, int c, unsigned int plen)
 
 # stm32的一些问题
 
+## [关于 LOAD segment with RWX permissions 警告](https://www.cnblogs.com/milton/p/16756523.html)
+使用GCC Arm工具链开发的项目, 在升级到 arm-gnu-toolchain-12.2 之后, 编译出现警告
+
+```sql
+arm-gnu-toolchain-12.2.mpacbti-bet1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none-eabi/12.2.0/../../../../arm-none-eabi/bin/ld: warning: Build/app.elf has a LOAD segment with RWX permissions
+```
+
+这是 Binutils 2.39 引入的一个新的安全类型的警告, GCC在升级版本时会带着新版本的 Binutils 一起发布. 如果要消除这个警告, 要么修改ld文件, 要么屏蔽掉它.
+
+## 说明
+这篇文章里有比较详细的说明  
+[https://www.redhat.com/en/blog/linkers-warnings-about-executable-stacks-and-segments](https://www.redhat.com/en/blog/linkers-warnings-about-executable-stacks-and-segments)
+
+**The executable segment warnings**
+
+当程序载入内存时会分段载入, 一些属于可执行的代码，一些属于数据, 可读或者可读可写, 可能还有一些用于其它特殊用途. 每一段内存都会区分可读、可写和可执行这三个属性, 如果一个内存段同时具有这三种属性, 则存在受到攻击的可能性, 因此在这种情况下链接器将产生以下警告
+
+```vhdl
+warning: <file> has a LOAD segment with RWX permissions
+```
+
+这个警告表示elf文件中存在一个或多个存在安全问题的段, 可以通过运行readelf程序进行查看
+
+```bash
+readelf -lW <file>
+```
+
+注意: 在readelf的输出中, 段的可执行标志被标记为E而不是X, 三个属性的标识为RWE而不是RWX. 警告出现的常见原因是使用自定义连接脚本进行链接, 该脚本未将代码和数据分成不同的段, 所以最好的解决办法是更新连接脚本. readelf命令将显示每个段包含哪些部分, 可以通过这些信息计算出连接器映射需要如何更新, 才能将代码部分和可写的数据部分分开.
+
+## 消除 LOAD segment with RWX permissions 警告
+
+## 选项一: 使用 --no-warn-rwx-segments 屏蔽
+-   如果连接使用的是ld, 可以用`--no-warn-rwx-segments`选项
+-   如果连接使用的是gcc, 直接用会提示无法识别的选项, 需要用`-Wl,--no-warn-rwx-segments`这样的方式
+
+## 选项二: 修改连接描述
+对于存在问题的elf, 可以通过这个命令查看文件结构, 注意后面的**Flg**部分, RWE分别表示Read,Write,Execute.
+
+```x86asm
+$ readelf -lW app.elf
+Elf file type is EXEC (Executable file)
+Entry point 0x15e1
+There are 3 program headers, starting at offset 52
+Program Headers:
+Type Offset VirtAddr PhysAddr FileSiz MemSiz Flg Align
+LOAD 0x010000 0x00000000 0x00000000 0x026f4 0x026f4 RWE 0x10000
+LOAD 0x020000 0x20000000 0x000026f4 0x00088 0x00334 RW 0x10000
+LOAD 0x000334 0x20000334 0x0000277c 0x00000 0x00004 RW 0x10000
+Section to Segment mapping:
+Segment Sections...
+00 .isr_vector .text .rodata .init_array .fini_array
+01 .data .bss
+02 ._user_heap_stack
+```
+
+其中`LOAD 0x010000 0x08000000 0x08000000 0x03ffc 0x03ffc RWE 0x10000`就是存在问题的segment, 如果要消除这个警告, 可以将ld文件中的 .init\_array 和 .fini\_array 这部分注释掉, 代码如下. 这部分是 startup 文件中 `__libc_init_array`使用的, 如果不需要可以直接删除, 对应的编译参数也可以加上`-nostartfiles`.
+
+```scss
+.preinit_array :
+{
+PROVIDE_HIDDEN (__preinit_array_start = .);
+KEEP (*(.preinit_array*))
+PROVIDE_HIDDEN (__preinit_array_end = .);
+} >FLASH
+.init_array :
+{
+PROVIDE_HIDDEN (__init_array_start = .);
+KEEP (*(SORT(.init_array.*)))
+KEEP (*(.init_array*))
+PROVIDE_HIDDEN (__init_array_end = .);
+} >FLASH
+.fini_array :
+{
+PROVIDE_HIDDEN (__fini_array_start = .);
+KEEP (*(SORT(.fini_array.*)))
+KEEP (*(.fini_array*))
+PROVIDE_HIDDEN (__fini_array_end = .);
+} >FLASH
+```
+
+这样编译完之后的结果如下, 第一个segment中, Flg变成了R E就没问题了.
+
+```delphi
+$ readelf -lW app.elf
+Elf file type is EXEC (Executable file)
+Entry point 0x1549
+There are 3 program headers, starting at offset 52
+Program Headers:
+Type Offset VirtAddr PhysAddr FileSiz MemSiz Flg Align
+LOAD 0x010000 0x00000000 0x00000000 0x02654 0x02654 R E 0x10000
+LOAD 0x020000 0x20000000 0x00002654 0x00088 0x00318 RW 0x10000
+LOAD 0x000318 0x20000318 0x000026dc 0x00000 0x00300 RW 0x10000
+Section to Segment mapping:
+Segment Sections...
+00 .isr_vector .text .rodata
+01 .data .bss
+02 ._user_heap_stack
+```
+
+上面这种修改并不是通用的, 对于需要使用libc的应用而言并不可行.
+
+实际上, 对于Cortex M系列的MCU而言, elf中第一个segment对应的实际上是烧录到flash中的部分(可执行), 第二个segment对应的才是运行时可读写的内存部分(数据), 第一个segment在通过flash启动正常运行时并不存在修改的可能性.
+
+因此结论是可以通过选项一, 简单地将警告屏蔽掉
+
+## 参考
+
+-   [https://github.com/raspberrypi/pico-sdk/issues/1029](https://github.com/raspberrypi/pico-sdk/issues/1029)
+-   [https://stackoverflow.com/questions/73429929/gnu-linker-elf-has-a-load-segment-with-rwx-permissions-embedded-arm-project](https://stackoverflow.com/questions/73429929/gnu-linker-elf-has-a-load-segment-with-rwx-permissions-embedded-arm-project)
+-   [https://github.com/OP-TEE/optee\_os/issues/5471](https://github.com/OP-TEE/optee_os/issues/5471)
+
 ## 发送大端序、存储小端序
 这就导致发送的数据都是反着的，并不是整个数据帧都是反着，也不是每位都是反着，而是具体的数据（存储的变量）以字节为单位的反过来。举例如下：
 
@@ -711,3 +822,393 @@ HAL_UART_Transmit(&huart2, send_buffer, sizeof(send_buffer), HAL_MAX_DELAY);
 ### 一定要注意清空缓冲区的时机
 - 早了就没数据或者数据不完整，完了数据不干净，即使有帧头帧尾也不好判断。
 - 注意递归调用的开端函数最后代码后执行（我就是在这里处理缓冲区发现没用）
+
+
+## 关于ADC
+
+### HAL_ADC_ConvCpltCallback
+这个中断回调只能把值读出来，然后设置一个标志位，然后其他模块去轮询检查这个标志位和值。调试很难确定，还是用逻辑分析仪来测量
+
+## 管理多个串口：优化代码重复的方法
+
+**问题描述**
+
+您在使用 STM32 时，有两个串口：
+• **串口1（如** huart2**）**：用于无线通信。
+• **串口2（如** huart3**）**：用于普通串口通信。
+
+您定义了一个枚举类型来区分通信接口：
+```c
+typedef enum {
+    SERIAL_PORT = 0,
+    WIRELESS
+} Com_Port_Type;
+```
+
+在多个函数中，您需要根据 Com_Port_Type 类型来确定使用哪个串口（huart2 或 huart3）。由于这部分代码在多个地方重复，您希望找到一种更好的方法来优化代码，提高可读性和可维护性。
+  
+**解决方案概述**
+为了解决代码重复的问题，提高代码的可读性和可维护性，您可以考虑以下几种方法：
+1. **使用映射数组**：使用数组或结构体，将 Com_Port_Type 与对应的 UART_HandleTypeDef 指针关联起来。
+2. **使用内联函数（inline function）**：定义一个内联函数，根据 Com_Port_Type 返回对应的 UART 句柄。
+3. **使用宏定义**：使用宏来映射 Com_Port_Type 与 UART 句柄。
+4. **使用函数指针或回调机制**：封装 UART 操作，使用函数指针实现动态调用。
+  
+
+下面将详细介绍每种方法的实现，并讨论它们的优缺点，帮助您选择最适合的方案。
+
+
+### 方法一：使用映射数组
+
+**实现思路**
+使用一个数组，将 Com_Port_Type 的值作为索引，映射到对应的 UART_HandleTypeDef 指针。这种方法简单直观，易于扩展。
+
+**实现步骤**
+
+1. **定义 UART 句柄数组**
+```c
+UART_HandleTypeDef *huart_array[] = {
+    &huart2, // SERIAL_PORT 对应 huart2
+    &huart3  // WIRELESS 对应 huart3
+};
+```
+
+2. **在函数中使用**
+```c
+void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
+{
+    UART_HandleTypeDef *huart = huart_array[port];
+    HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+}
+```
+
+
+**优点**
+• **代码简洁**：避免了多次使用 if-else 或 switch-case 结构。
+• **易于扩展**：添加新的通信接口时，只需在数组中增加对应的 UART 句柄。
+• **效率高**：数组索引操作开销小。
+  
+**注意事项**
+• **确保枚举值与数组索引一致**：枚举类型的值应从 0 开始，并连续递增，与数组索引对应。
+• **防止数组越界**：在访问数组前，最好检查 port 的取值范围，防止非法访问。
+
+### 方法二：使用内联函数
+**实现思路**
+定义一个内联函数，根据 Com_Port_Type 返回对应的 UART_HandleTypeDef 指针。
+
+**实现步骤**
+1. **定义内联函数**
+```c
+static inline UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
+{
+    switch (port)
+    {
+        case SERIAL_PORT:
+            return &huart2;
+        case WIRELESS:
+            return &huart3;
+        default:
+            return NULL; // 或者处理错误情况
+    }
+}
+```
+
+2. **在函数中使用**
+```c
+void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
+{
+    UART_HandleTypeDef *huart = Get_UART_Handle(port);
+    if (huart != NULL)
+    {
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况
+    }
+}
+```
+
+**优点**
+• **可读性高**：函数名清晰，代码逻辑明确。
+• **易于维护**：修改映射关系时，只需更改内联函数内部。
+
+**缺点**
+• **略有开销**：尽管是内联函数，但 switch-case 结构可能带来微小的性能开销（通常可以忽略不计）。
+
+### 方法三：使用宏定义
+
+**实现思路**
+使用宏定义，根据 Com_Port_Type 返回对应的 UART 句柄。
+
+**实现步骤**
+1. **定义宏**
+
+```c
+#define GET_UART_HANDLE(port) ((port) == SERIAL_PORT ? &huart2 : &huart3)
+```
+
+2. **在函数中使用**
+```c
+void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
+{
+    UART_HandleTypeDef *huart = GET_UART_HANDLE(port);
+    HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+}
+```
+
+**优点**
+• **效率高**：宏在预处理阶段替换，无运行时开销。
+• **代码简洁**：一行代码实现映射。
+
+**缺点**
+• **可读性差**：宏的使用可能降低代码的可读性，调试困难。
+• **类型安全性差**：宏没有类型检查，可能导致意外的错误。
+
+### 方法四：使用结构体封装通信接口
+**实现思路**
+定义一个通信接口结构体，包含 UART 句柄和其他相关信息。使用该结构体数组管理多个通信接口。
+
+**实现步骤**
+1. **定义通信接口结构体**
+```c
+typedef struct {
+    Com_Port_Type portType;
+    UART_HandleTypeDef *huart;
+    // 可以添加其他成员，例如端口名称、配置参数等
+} Com_Port_t;
+```
+
+2. **定义通信接口数组**
+```c
+Com_Port_t comPorts[] = {
+    { SERIAL_PORT, &huart2 },
+    { WIRELESS,    &huart3 }
+};
+```
+
+3. **实现查找函数**
+```c
+UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
+{
+    for (size_t i = 0; i < sizeof(comPorts)/sizeof(comPorts[0]); i++)
+    {
+        if (comPorts[i].portType == port)
+        {
+            return comPorts[i].huart;
+        }
+    }
+    return NULL; // 未找到匹配的端口
+}
+```
+
+  
+4. **在函数中使用**
+
+  
+```c
+void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
+{
+    UART_HandleTypeDef *huart = Get_UART_Handle(port);
+    if (huart != NULL)
+    {
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况_
+    }
+}
+```
+
+**优点**
+• **结构清晰**：封装了通信接口的信息，便于管理。
+• **扩展性好**：可以轻松添加新的通信接口和属性。
+
+**缺点**
+• **查找开销**：每次调用需要遍历数组，查找对应的 UART 句柄。但对于接口数量较少的情况，开销可以忽略不计。
+
+### **方法五：使用函数指针或回调机制**
+
+**实现思路**
+封装 UART 操作函数，根据 Com_Port_Type 调用对应的操作函数。
+
+**实现步骤**
+
+1. **定义操作函数**
+  
+```c
+void UART_Send_SerialPort(uint8_t *pData, uint16_t Size)
+
+{
+
+    HAL_UART_Transmit(&huart2, pData, Size, HAL_MAX_DELAY);
+
+}
+
+  
+
+void UART_Send_Wireless(uint8_t *pData, uint16_t Size)
+
+{
+
+    HAL_UART_Transmit(&huart3, pData, Size, HAL_MAX_DELAY);
+
+}
+
+```
+
+  
+
+2. **定义函数指针数组**
+
+  
+```c
+
+typedef void (*UART_Send_Func)(uint8_t *, uint16_t);
+
+  
+
+UART_Send_Func uartSendFuncs[] = {
+
+    UART_Send_SerialPort, _// SERIAL_PORT_
+
+    UART_Send_Wireless    _// WIRELESS_
+
+};
+```
+  
+
+3. **在函数中使用**
+  
+```c
+void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
+
+{
+
+    if (port < sizeof(uartSendFuncs)/sizeof(uartSendFuncs[0]))
+
+    {
+
+        uartSendFuncs[port](pData, Size);
+
+    }
+
+    else
+
+    {
+
+        _// 处理错误情况_
+
+    }
+
+}
+```
+  
+**优点**
+• **高扩展性**：可以针对不同的通信接口实现不同的操作逻辑。
+• **封装性好**：将具体的 UART 操作封装在函数内部。
+
+**缺点**
+• **复杂度增加**：对于简单的映射关系，可能有些过度设计。
+• **维护成本**：需要维护函数指针数组，增加了代码量。
+
+### 选择最佳方案
+
+综合以上方法，**方法一（使用映射数组）** 和 **方法二（使用内联函数）** 最为简单实用，适合您的需求。
+
+• **方法一** 优点在于代码简洁，效率高，易于理解。
+
+• **方法二** 提供了更高的可读性，便于维护和调试。
+
+如果您更关注代码的简洁性和效率，建议选择 **方法一**。
+
+如果您希望代码具有更好的可读性和可维护性，建议选择 **方法二**。
+
+**代码示例**
+**使用方法一：映射数组**
+```c
+#include "main.h"
+UART_HandleTypeDef huart2; // 假设已初始化_
+
+UART_HandleTypeDef huart3; // 假设已初始化_
+
+typedef enum {
+    SERIAL_PORT = 0,
+    WIRELESS
+} Com_Port_Type;
+
+UART_HandleTypeDef *huart_array[] = {
+    &huart2, // SERIAL_PORT_
+    &huart3  // WIRELESS_
+};
+
+
+void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
+{
+    if (port >= 0 && port < sizeof(huart_array)/sizeof(huart_array[0]))
+    {
+        UART_HandleTypeDef *huart = huart_array[port];
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况_
+    }
+}
+```
+
+
+**使用方法二：内联函数**
+  ```c
+#include "main.h"
+UART_HandleTypeDef huart2;// 假设已初始化_
+UART_HandleTypeDef huart3; // 假设已初始化_
+
+typedef enum {
+    SERIAL_PORT = 0,
+    WIRELESS
+} Com_Port_Type;
+
+static inline UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
+{
+    switch (port)
+    {
+        case SERIAL_PORT:
+            return &huart2;
+        case WIRELESS:
+            return &huart3;
+        default:
+            return NULL; // 处理错误情况
+    }
+}
+
+void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
+{
+    UART_HandleTypeDef *huart = Get_UART_Handle(port);
+    if (huart != NULL)
+    {
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况
+    }
+}
+```
+  
+
+**额外建议**
+• **错误处理**：在获取 UART 句柄时，务必检查返回值是否为 NULL，以防止访问非法地址导致程序崩溃。
+• **类型安全**：如果可能，使用更严格的类型检查机制，防止错误的类型转换。
+
+• **代码注释**：添加必要的注释，说明函数的用途和参数，提升代码可读性。
+
+• **扩展性**：如果将来需要支持更多的通信接口，可以直接在数组或内联函数中添加新的映射关系。
+
+**结论**
+
+为了减少代码重复，提高代码的可读性和可维护性，建议您使用 **映射数组** 或 **内联函数** 来管理多个 UART 句柄。这两种方法都可以有效地根据 Com_Port_Type 返回对应的 UART_HandleTypeDef 指针，避免在多个函数中重复编写相同的 if-else 或 switch-case 代码。
+
+根据您的具体需求和个人偏好，选择最适合您的方法。希望以上内容对您有所帮助！
+
