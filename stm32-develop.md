@@ -264,6 +264,12 @@ Cortex-debug插件，然后在 `.vscode`文件夹 写一个上文的  `launch.js
    - 可以在 GDB 中设置断点、单步执行代码、检查寄存器和内存等。
 
 # HAL库
+## stm不同库的关系
+现在stm主推的就是LL&HAL库，LL是更底层的，HAL是抽象程度更高的，也都是开源的，你下载的就有源码。相比之下，标准库（何为标准，ARM牵头定义的[CMSIS](https://arm-software.github.io/CMSIS_6/latest/General/index.html)标准，符合这个标准的库就叫标准库）stm已不经常更新。
+都是开源，都可以学习，只能说，用stm的话那就还是HAL&LL库。标准库也会在下面章节简单介绍。
+![stm32_embedded_software](en.stm32_embedded_software_sc961.jpg)
+
+
 - [野火STM32 HAL库开发](https://doc.embedfire.com/mcu/stm32/f103/hal_general/zh/latest/index.html)（有对应的PDF在apple books）但是最好先看手册（官网有中文版比如M0的PDF在apple books）查资料，这个野火的教程不适合入门，一个是对基本原理不讲或讲的太杂太细，二是有大量的宏定义，反而让初学者缕不清HAL库的函数调用。
 
 ![stm32软件架构](stm32-develop.assets/stm32软件架构.png)
@@ -610,6 +616,11 @@ int main(void) {
 ## 八 Flash
 - [环境参数持久化存储的应用开发](https://blog.csdn.net/tysonchiu/article/details/125788461)
 - [stm32永久保存参数](https://www.cnblogs.com/Bingley-Z/p/17463058.html)
+
+# 标准库
+[标准库](https://www.st.com.cn/zh/embedded-software/stm32-standard-peripheral-libraries/documentation.html)，即符合ARM牵头制定的ARM架构软件标准[CMSIS](https://arm-software.github.io/CMSIS_6/latest/General/index.html)的库。
+![cmsis_components](cmsis_components.png)
+
 
 # 软件测试
 - [STM32 | 分享几个开源的测试框架](https://news.eeworld.com.cn/mcu/ic544312.html)
