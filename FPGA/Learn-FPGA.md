@@ -8,6 +8,7 @@ FPGA出现在很多工业领域，因为这样省去了硬件设计中流片这�
 ## fpga开源工具
 - [homebrew-oss-fpga](https://github.com/ktemkin/homebrew-oss-fpga)
 - [OSS CAD Suite: the one-stop shop for our tools](https://github.com/YosysHQ#oss-cad-suite-the-one-stop-shop-for-our-tools)
+- [openlane2](https://openlane2.readthedocs.io/en/latest/getting_started/common/docker_installation/installation_macos.html)
 
 If you want to use our EDA tools, the easiest way is to install the binary release [OSS CAD suite](https://github.com/YosysHQ/oss-cad-suite-build/releases/latest), which contains all required dependencies and related tools. Find the [documentation here](https://yosyshq.readthedocs.io/en/latest/). We also have an [OSS CAD Suite github action](https://github.com/YosysHQ/setup-oss-cad-suite) for using the tools in a github CI workflow.
 
@@ -48,7 +49,6 @@ Other notable projects:
 - [数字电路]()
 - [FPGA的优点简介](https://cloud.tencent.com/developer/article/1467981)
 - [macos-fpga](https://longfangsong.github.io/macos-fpga/)
-
 
 # 小问题
 

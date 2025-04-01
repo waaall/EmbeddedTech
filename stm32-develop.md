@@ -1,6 +1,11 @@
 
 # 开发环境
 ## Reference
+
+### 开源库
+- [libopencm3](https://github.com/libopencm3/libopencm3)
+- [STMems_Standard_C_drivers](https://github.com/STMicroelectronics/STMems_Standard_C_drivers)
+- 
 ###  网址/博客
 - [STM32开发环境搭建(ARM-GCC)](https://microdynamics.github.io/1.%20Breeze%20Mini四轴飞行器/2.2%20STM32开发环境搭建(ARM-GCC)/)
 - [windows开源STM32开发环境](https://blog.csdn.net/zhangfan2256/article/details/132196426)
@@ -92,6 +97,18 @@
 总体来说，`gcc-arm-embedded` 更加偏向于官方提供的ARM嵌入式开发工具链，经过ARM官方的优化和测试。`arm-none-eabi-gcc` 则是一个通用的工具链版本，可能包含更多GCC的特性和最新的更新，但优化上未必专注于某些ARM芯片。
 
 对于大多数嵌入式开发项目，尤其是针对ARM Cortex-M系列开发时，选择 `gcc-arm-embedded` 会更为稳妥，因为这是经过官方认证的工具链。
+
+#### 查看内存&flash占用
+```bash
+arm-none-eabi-size ***.elf
+
+text    data     bss     dec     hex filename
+39628    164    4748   44540    4127 test-beta.elf
+```
+- `text`：Flash 中的代码大小: 39.6KB
+- `data`：已初始化的全局变量（占用 Flash + RAM）: 164B
+- `bss`：未初始化的全局变量（仅占用 RAM）: 4.7KB
+- `dec`: 总大小，无直接意义。
 
 #### mac & linux 编译工具安装
 ```c
