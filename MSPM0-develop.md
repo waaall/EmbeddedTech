@@ -60,11 +60,10 @@ CCSTUDIO、MSPM0SDK 和 SysConfig 是德州仪器（TI）针对微控制器（�
 
 ---
 
-### **总结**
-
 - **CCSTUDIO** 是核心开发环境。
 - **MSPM0SDK** 提供软件资源（库和示例）。
 - **SysConfig** 是辅助工具，简化硬件配置。  
     三者共同构成 TI MSPM0 开发的完整工具链，显著提高开发效率。
 
+## vscode 流程
 

@@ -259,7 +259,25 @@ download:
 ### 6. 调试
 #### vscode插件调试
 Cortex-debug插件，然后在 `.vscode`文件夹 写一个上文的  `launch.json`
+#### Cortex-debug设置（openocd & arm-gcc）
 
+[问题](https://github.com/Marus/cortex-debug/issues/650)：Failed to launch OpenOCD GDB Server: Error: spawn /usr/local/bin EACCES
+your OpenOCDPath is incomplete...pointing to a directory rather than an executable
+```bash
+# 错误的
+"cortex-debug.openocdPath": "/usr/local/bin",
+```
+
+Which resulted in this a bad launch
+```bash
+Launching gdb-server: /usr/local/bin -c "gdb_port 50000" -c "tcl_port 50001" -c "telnet_port 50002" -s ~/pico/openocd/tcl -f /home/myself/.vscode/extensions/marus25.cortex-debug-1.4.4/support/openocd-helpers.tcl -f interface/picoprobe.cfg -f target/rp2040.cfg
+```
+
+Change it to
+```bash
+# 正确的
+"cortex-debug.openocdPath": "/usr/local/bin/openocd",
+```
 #### 命令行调试
 
 - [gdb 调试利器](https://linuxtools-rst.readthedocs.io/zh-cn/latest/tool/gdb.html)
