@@ -65,5 +65,50 @@ CCSTUDIO、MSPM0SDK 和 SysConfig 是德州仪器（TI）针对微控制器（�
 - **SysConfig** 是辅助工具，简化硬件配置。  
     三者共同构成 TI MSPM0 开发的完整工具链，显著提高开发效率。
 
-## vscode 流程
+## vscode/cursor流程
+当然还是要下载CCSTUDIO作为基本的配置工具的。但是可以使用`vscode/cursor + cortex-debug + arm-gcc + openocd + daplink/jlink` 来下载调试mspm0。
 
+和stm的流程的核心区别在于openocd官方还未支持mspm0，ti已经开发了支持mspm0的openocd。据[官方帖子](https://e2e.ti.com/support/microcontrollers/arm-based-microcontrollers-group/arm-based-microcontrollers/f/arm-based-microcontrollers-forum/1373048/mspm0l1105-flashing-mspm0l1105-using-openocd)& [openocd分支来自Nishanth Menon](https://review.openocd.org/c/openocd/+/8385)。方法就是自己[github](https://github.com/nmenon/openocd/tree/master)下载并编译：
+```bash
+# 0. install deps (for example on ubuntu)
+sudo apt update
+sudo apt install git make autoconf automake libtool pkg-config libusb-dev libftdi1-dev libhidapi-dev
+
+# 1. clone
+mkdir openocd-mspm0
+cd openocd-mspm0
+git clone https://github.com/nmenon/openocd.git
+cd openocd
+
+# 2. prepare (like clone and make jimtcl)
+./bootstrap
+git submodule init
+git submodule update
+cd jimtcl
+./configure
+make
+sudo make install
+
+# 3. make (二进制文件/指令 的地址可以按需指定)
+cd ..
+./configure --prefix=/home/zx/Develop/openocd-mspm0/bin/openocd
+make
+sudo make install
+
+# 4. use dap (文件 cmsis-dap.cfg 和 ti_mspm0.cfg 也要指定位置或者拷贝到项目地址)
+/home/zx/Develop/openocd-mspm0/bin/openocd  -f cmsis-dap.cfg -f ti_mspm0.cfg -c init -c "reset halt" -c "wait_halt" -c "flash write_image erase Debug/try_mspm0g3507.out" -c reset -c shutdown
+
+# 5. debug 指定好cortex-debug插件的openocd地址就可以，或者在launch文件中指定
+```
+
+
+
+# 库函数
+
+
+
+# 传感器
+
+## 加速度传感器
+
+### [mpu6050](https://github.com/Embedfire-sensor/ebf_sensor_mpu6050_data)

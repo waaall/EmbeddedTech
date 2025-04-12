@@ -298,6 +298,50 @@ Change it to
      ```
    - 可以在 GDB 中设置断点、单步执行代码、检查寄存器和内存等。
 
+### 7. 上位机串口工具
+#### [Serial Studio](https://github.com/Serial-Studio/Serial-Studio)
+linux、mac、windows平台可用
+```bash
+# mac 可以brew安装，有网络问题也可以下载github release
+brew install --cask serial-studio
+```
+
+```c
+# 单片机的串口发送数据要与serial-studio的设置对应上，
+# 比如波特率，设置帧头$帧尾\n，多通道数据间隔符号","
+
+# 单通道数据示例，serial-studio选multiplots---plot
+static char message[10] = "";
+sprintf(message, "$%d\n", adc_v_int);
+HAL_UART_Transmit_DMA(huart_addr, (uint8_t*)message, strlen(message));
+
+# 多通道数据示例（三轴加速度传感器）,serial-studio选加速度传感器数据
+static char accel_message[32] = "";
+int16_t accel_raw[3];
+LIS3DH_ReadRawData(accel_raw);
+sprintf(accel_message, "$%d,%d,%d\n", 
+                        accel_raw[0]/16, // X轴
+                        accel_raw[1]/16, // Y轴
+                        accel_raw[2]/16  // Z轴
+        );
+ HAL_UART_Transmit_DMA(huart_addr, (uint8_t*)accel_message,
+									 strlen(accel_message))
+```
+#### [Serial Test](https://github.com/wh201906/SerialTest)
+
+安卓串口问题：
+```bash
+SerialTest supports hardware serial port in /dev/. You need to run chmod 777 <serial port device> with root permission to make the serial port accessible to SerialTest.
+SerialTest does not support USB to serial adapters like FT232, CH340, CP2102 and other USB-CDC devices natively. However, you can still use them with SerialTest, if you have a UART to TCP app to convert the serial connection to TCP connection. I got this idea from this webpage and it does work.
+
+You can use this app for converting UART connection to TCP connection.
+com.hardcodedjoy.tcpuart
+https://play.google.com/store/apps/details?id=com.hardcodedjoy.tcpuart
+
+SerialTest支持/dev/目录下的的硬件串口。但需要运行chmod 777 <串口设备地址>(需要root权限)来让SerialTest能够访问它。
+SerialTest本身不支持各类USB串口设备(FT232、CH340、CP2102等，以及USB-CDC设备)。但是，你可以通过UART转TCP的APP来把串口转为TCP连接，从而通过SerialTest来访问。这一方法源于Proxmark3的文档，经测试能够正常工作。
+```
+
 # HAL库
 ## stm不同库的关系
 现在stm主推的就是LL&HAL库，LL是更底层的，HAL是抽象程度更高的，也都是开源的，你下载的就有源码。相比之下，标准库（何为标准，ARM牵头定义的[CMSIS](https://arm-software.github.io/CMSIS_6/latest/General/index.html)标准，符合这个标准的库就叫标准库）stm已不经常更新。
@@ -1257,4 +1301,14 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 为了减少代码重复，提高代码的可读性和可维护性，建议您使用 **映射数组** 或 **内联函数** 来管理多个 UART 句柄。这两种方法都可以有效地根据 Com_Port_Type 返回对应的 UART_HandleTypeDef 指针，避免在多个函数中重复编写相同的 if-else 或 switch-case 代码。
 
 根据您的具体需求和个人偏好，选择最适合您的方法。希望以上内容对您有所帮助！
+
+
+# 传感器
+
+## 加速度传感器
+
+### [mpu6050](https://github.com/Embedfire-sensor/ebf_sensor_mpu6050_data)
+
+
+### lis3dh
 
