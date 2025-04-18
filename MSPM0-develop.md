@@ -91,7 +91,7 @@ sudo make install
 
 # 3. make (二进制文件/指令 的地址可以按需指定)
 cd ..
-./configure --prefix=/home/zx/Develop/openocd-mspm0/bin/openocd
+./configure --prefix=/home/zx/Develop/openocd-mspm0
 make
 sudo make install
 
