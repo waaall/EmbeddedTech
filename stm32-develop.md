@@ -776,6 +776,12 @@ void *memset(void *pdst, int c, unsigned int plen)
 
 # stm32的一些问题
 
+## 环境配置相关
+
+### stm32cubeMX联网问题
+Help-设置上代理应该就好了。
+
+
 ## [关于 LOAD segment with RWX permissions 警告](https://www.cnblogs.com/milton/p/16756523.html)
 使用GCC Arm工具链开发的项目, 在升级到 arm-gnu-toolchain-12.2 之后, 编译出现警告
 
