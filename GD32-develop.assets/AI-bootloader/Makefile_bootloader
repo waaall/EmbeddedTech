@@ -1,0 +1,139 @@
+# Bootloader + Application Makefile
+
+# 工具链定义
+PREFIX = arm-none-eabi-
+CC = $(PREFIX)gcc
+AS = $(PREFIX)as
+LD = $(PREFIX)ld
+OBJCOPY = $(PREFIX)objcopy
+OBJDUMP = $(PREFIX)objdump
+SIZE = $(PREFIX)size
+
+# 编译参数
+CFLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -O2 -g -Wall
+CFLAGS += -ffunction-sections -fdata-sections
+ASFLAGS = -mcpu=cortex-m4 -mthumb
+LDFLAGS = -Wl,--gc-sections -Wl,--print-memory-usage
+
+# 头文件路径
+INCLUDES = -I./inc \
+           -I./Firmware/CMSIS/Include \
+           -I./Firmware/CMSIS/GD/GD32F4xx/Include \
+           -I./Firmware/GD32F4xx_standard_peripheral/Include
+
+# 通用源文件
+COMMON_SOURCES = Firmware/CMSIS/GD/GD32F4xx/Source/system_gd32f4xx.c \
+                 Firmware/GD32F4xx_standard_peripheral/Source/gd32f4xx_gpio.c \
+                 Firmware/GD32F4xx_standard_peripheral/Source/gd32f4xx_rcu.c \
+                 Firmware/GD32F4xx_standard_peripheral/Source/gd32f4xx_usart.c \
+                 Firmware/GD32F4xx_standard_peripheral/Source/gd32f4xx_misc.c
+
+# Bootloader源文件
+BOOTLOADER_SOURCES = bootloader_main.c $(COMMON_SOURCES)
+BOOTLOADER_STARTUP = bootloader_startup.S
+BOOTLOADER_LD = bootloader_flash.ld
+
+# 应用程序源文件
+APP_SOURCES = src/main.c \
+              src/systick.c \
+              src/gd32f4xx_it.c \
+              src/gd32f450i_eval.c \
+              $(COMMON_SOURCES)
+APP_STARTUP = gcc_startup/startup_gd32f407_427.S
+APP_LD = application_flash.ld
+
+# 目标文件
+BOOTLOADER_OBJS = $(BOOTLOADER_SOURCES:.c=_bl.o) $(BOOTLOADER_STARTUP:.S=_bl.o)
+APP_OBJS = $(APP_SOURCES:.c=_app.o) $(APP_STARTUP:.S=_app.o)
+
+# 默认目标
+.PHONY: all clean bootloader application combined
+
+all: bootloader application combined
+
+# 编译Bootloader
+bootloader: bootloader.bin
+
+bootloader.bin: bootloader.elf
+	$(OBJCOPY) -O binary $< $@
+	$(SIZE) bootloader.elf
+
+bootloader.elf: $(BOOTLOADER_OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -T $(BOOTLOADER_LD) $^ -o $@
+
+# 编译应用程序
+application: application.bin
+
+application.bin: application.elf
+	$(OBJCOPY) -O binary $< $@
+	$(SIZE) application.elf
+
+application.elf: $(APP_OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -T $(APP_LD) $^ -o $@
+
+# 合并Bootloader和应用程序
+combined: combined.bin
+
+combined.bin: bootloader.bin application.bin
+	# 创建16KB的bootloader镜像（不足部分填充0xFF）
+	cp bootloader.bin bootloader_16k.bin
+	truncate -s 16384 bootloader_16k.bin
+	# 合并bootloader和应用程序
+	cat bootloader_16k.bin application.bin > combined.bin
+	@echo "Combined firmware created: combined.bin"
+	@echo "Bootloader size: $$(stat -f%z bootloader.bin) bytes"
+	@echo "Application size: $$(stat -f%z application.bin) bytes"
+	@echo "Combined size: $$(stat -f%z combined.bin) bytes"
+
+# Bootloader对象文件编译规则
+%_bl.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -DBOOTLOADER_BUILD -c $< -o $@
+
+%_bl.o: %.S
+	$(AS) $(ASFLAGS) $< -o $@
+
+# 应用程序对象文件编译规则
+%_app.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -DAPPLICATION_BUILD -c $< -o $@
+
+%_app.o: %.S
+	$(AS) $(ASFLAGS) $< -o $@
+
+# 烧录目标
+.PHONY: flash flash-bootloader flash-application
+
+flash: combined.bin
+	openocd -f openocd_gdlink.cfg \
+		-c "program combined.bin 0x08000000 verify reset exit"
+
+flash-bootloader: bootloader.bin
+	openocd -f openocd_gdlink.cfg \
+		-c "program bootloader.bin 0x08000000 verify reset exit"
+
+flash-application: application.bin
+	openocd -f openocd_gdlink.cfg \
+		-c "program application.bin 0x08004000 verify reset exit"
+
+# 清理
+clean:
+	rm -f *.o *_bl.o *_app.o
+	rm -f *.elf *.bin *.hex *.map
+	rm -f bootloader_16k.bin
+	rm -f Firmware/CMSIS/GD/GD32F4xx/Source/*_bl.o
+	rm -f Firmware/CMSIS/GD/GD32F4xx/Source/*_app.o
+	rm -f Firmware/GD32F4xx_standard_peripheral/Source/*_bl.o
+	rm -f Firmware/GD32F4xx_standard_peripheral/Source/*_app.o
+	rm -f src/*_app.o
+	rm -f gcc_startup/*_bl.o
+
+# 帮助信息
+help:
+	@echo "可用目标:"
+	@echo "  all              - 编译Bootloader和应用程序"
+	@echo "  bootloader       - 仅编译Bootloader"
+	@echo "  application      - 仅编译应用程序"
+	@echo "  combined         - 创建合并固件"
+	@echo "  flash            - 烧录合并固件"
+	@echo "  flash-bootloader - 仅烧录Bootloader"
+	@echo "  flash-application- 仅烧录应用程序"
+	@echo "  clean            - 清理编译文件"
