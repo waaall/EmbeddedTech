@@ -9,12 +9,31 @@ vscode的环境配置，几乎就是相当于基于terminal的全开源流程。
 - openocd最好用`GD32EmbeddedBuilder_***\Tools\OpenOCD\`这里的`scripts/target`有最新支持的ctg文件。
 - mac 和 linux 建议用pyocd : `pip install pyocd`; 也可以用openocd,但需要一些trick: 改名字（gd32f4xx.ctg改为stm32f4xx.ctg）里面_CHIPNAME和_TARGETNAME改了就可以了。
 
-## arm-gcc 环境框架
-### 问题1: 整体框架
+另外，[GD32-DFP](https://gd32mcu.com/data/documents/pack/GigaDevice.GD32E10x_DFP.1.2.1.pack)是keil的包，默认也是从这个网址下载，pyocd 也是在这里下载；下载失败可能是[gd32](https://gd32mcu.com)证书过期之类的，等等`pyocd pack update`再下载就好了。这个.pack文件其实就是zip文件，重命名后解压就会发现其中还是下面讲的这一套文件（CMSIS、startup、Peripheral Lib等）。
+
+# arm-gcc 环境框架
+- [CMSIS](https://arm-software.github.io/CMSIS_5/General/html/index.html)
+
+|CMSIS-...|Target Processors|Description|
+|:--|:--|:--|
+|[**Core(M)**](https://arm-software.github.io/CMSIS_5/Core/html/index.html)|All Cortex-M, SecurCore|Standardized API for the Cortex-M processor core and peripherals. Includes intrinsic functions for Cortex-M4/M7/M33/M35P SIMD instructions.|
+|[**Core(A)**](https://arm-software.github.io/CMSIS_5/Core_A/html/index.html)|Cortex-A5/A7/A9|Standardized API and basic run-time system for the Cortex-A5/A7/A9 processor core and peripherals.|
+|[**Driver**](https://arm-software.github.io/CMSIS_5/Driver/html/index.html)|All Cortex|Generic peripheral driver interfaces for middleware. Connects microcontroller peripherals with middleware that implements for example communication stacks, file systems, or graphic user interfaces.|
+|[**DSP**](https://arm-software.github.io/CMSIS_5/DSP/html/index.html)|All Cortex-M|DSP library collection with over 60 functions for various data types: fixed-point (fractional q7, q15, q31) and single precision floating-point (32-bit). Implementations optimized for the SIMD instruction set are available for Cortex-M4/M7/M33/M35P.|
+|[**NN**](https://arm-software.github.io/CMSIS_5/NN/html/index.html)|All Cortex-M|Collection of efficient neural network kernels developed to maximize the performance and minimize the memory footprint on Cortex-M processor cores.|
+|[**RTOS v1**](https://arm-software.github.io/CMSIS_5/RTOS/html/index.html)|Cortex-M0/M0+/M3/M4/M7|Common API for real-time operating systems along with a reference implementation based on RTX. It enables software components that can work across multiple RTOS systems.|
+|[**RTOS v2**](https://arm-software.github.io/CMSIS_5/RTOS2/html/index.html)|All Cortex-M, Cortex-A5/A7/A9|Extends CMSIS-RTOS v1 with Armv8-M support, dynamic object creation, provisions for multi-core systems, binary compatible interface.|
+|[**Pack**](https://arm-software.github.io/CMSIS_5/Pack/html/index.html)|All Cortex-M, SecurCore, Cortex-A5/A7/A9|Describes a delivery mechanism for software components, device parameters, and evaluation board support. It simplifies software re-use and product life-cycle management (PLM).   <br>Is part of the [**Open CMSIS Pack project**](https://www.open-cmsis-pack.org/).|
+|[**Build**](https://arm-software.github.io/CMSIS_5/Build/html/index.html)|All Cortex-M, SecurCore, Cortex-A5/A7/A9|A set of tools, software frameworks, and work flows that improve productivity, for example with Continuous Integration (CI).  <br>Is replaced with the [**CMSIS-Toolbox**](https://github.com/Open-CMSIS-Pack/devtools/tree/main/tools).|
+|[**SVD**](https://arm-software.github.io/CMSIS_5/SVD/html/index.html)|All Cortex-M, SecurCore|Peripheral description of a device that can be used to create peripheral awareness in debuggers or CMSIS-Core header files.|
+|[**DAP**](https://arm-software.github.io/CMSIS_5/DAP/html/index.html)|All Cortex|Firmware for a debug unit that interfaces to the CoreSight Debug Access Port.|
+|[**Zone**](https://arm-software.github.io/CMSIS_5/Zone/html/index.html)|All Cortex-M|Defines methods to describe system resources and to partition these resources into multiple projects and execution areas.|
+
+## 问题1: 整体框架
 make + arm-none-eabi-gcc完成arm的mcu的编译过程，不论是stm32或者GD32，都是类似的CMSIS、外设库函数、startup、和ld文件，这些文件都是干什么的，整个make + arm-none-eabi-gcc 的编译过程是怎么样的，哪些步骤需要哪些文件干什么？
 我来详细解释ARM MCU（如STM32和GD32）的编译过程以及各个文件的作用。首先让我查看一下当前工作区的结构，以便更好地说明。 基于当前的GD32项目结构，我来详细解释ARM MCU（STM32/GD32）的编译过程和各个文件的作用：
 
-#### （1）ARM MCU项目文件结构及作用
+### （1）ARM MCU项目文件结构及作用
 
  1. **CMSIS层（Cortex Microcontroller Software Interface Standard）**
 - **作用**: ARM公司制定的标准接口，提供硬件抽象层
@@ -45,7 +64,7 @@ make + arm-none-eabi-gcc完成arm的mcu的编译过程，不论是stm32或者GD3
   - 指定代码段、数据段的存储位置
   - 设置入口点（Reset_Handler）
 
-#### （2）make + arm-none-eabi-gcc 编译流程
+### （2）make + arm-none-eabi-gcc 编译流程
 
  **第1步：预处理（Preprocessing）**
 ```bash
@@ -133,7 +152,7 @@ firmware.elf: $(SOURCES:.c=.o) $(STARTUP:.S=.o)
 	$(AS) $(ASFLAGS) $< -o $@
 ```
 
-#### （3）编译过程中各文件作用
+### （3）编译过程中各文件作用
 
 1. **CMSIS文件**: 提供标准化的硬件抽象接口
 2. **外设库**: 简化外设操作，提高开发效率
@@ -143,7 +162,7 @@ firmware.elf: $(SOURCES:.c=.o) $(STARTUP:.S=.o)
 
 这个编译流程确保了从高级C代码到最终可烧录的二进制文件的完整转换过程，每个步骤都有其特定的作用和输出。
 
-### 问题2: 调用关系
+## 问题2: 调用关系
 
 - 1: 这些文件的调用关系你没说清楚，比如core_cm4.h: Cortex-M4内核定义，我没有看到有文件include core_cm4.h，它在哪里被调用呢？包括core_cm4.h、gd32f4xx.h、system_gd32f4xx.h等的相互调用关系？
 
@@ -178,7 +197,7 @@ main.c → gd32f4xx.h → core_cm4.h + system_gd32f4xx.h
    ```
    gd32f4xx_it.h内部包含gd32f4xx.h
 
-### 问题3: 基本硬件定义
+## 问题3: 基本硬件定义
 
 - （1）gd32f4xx.h定义（寄存器、中断向量等），但是startup_gd32f450_470.S定义中断向量表，这不重复定义了吗？这两个文件的关系和在这个过程中的调用顺序是什么？
 
@@ -256,12 +275,12 @@ __gVectors:
      ```
 
 
-### 问题4: bootloader过程
+## 问题4: bootloader过程
 烧录到启动的过程是怎样的（每个步骤与哪些文件相关）；
 
 
 
-#### **第1阶段：烧录过程（Programming）**
+### 第1阶段：烧录过程（Programming）
 
  **1.1 固件生成**
 ```bash
@@ -293,7 +312,7 @@ openocd -f openocd_gdlink.cfg -c "program firmware.bin 0x08000000 verify reset e
 0x080xxxxx: [常量数据] - const变量
 ```
 
-#### **第2阶段：硬件复位启动**
+### 第2阶段：硬件复位启动
 
  **2.1 硬件复位**
 - MCU复位后，PC指针指向`0x08000000`
@@ -306,7 +325,7 @@ SP = *0x08000000          // 设置栈指针
 PC = *0x08000004          // 跳转到Reset_Handler
 ```
 
-#### **第3阶段：软件启动过程**
+### 第3阶段：软件启动过程
 
  **3.1 Reset_Handler执行**
 **文件**：startup_gd32f407_427.S
@@ -377,10 +396,10 @@ int main(void)
 ```
 
 
-### 问题5: 自定义bootloader
+## 问题5: 自定义bootloader
 比如我自己想自定义一个启动过程，写一个 bootloader 应该如何操作？bootloader这个过程又是在哪个文件定义的？
 
-#### **Bootloader架构设计**
+### Bootloader架构设计
 ```
 Flash布局：
 0x08000000: [Bootloader] - 16KB
@@ -399,13 +418,13 @@ Flash布局：
 | **跳转应用程序**        | bootloader_main.c      | 重新配置向量表，跳转到应用程序               |
 | **应用程序启动**        | startup_gd32f407_427.S | 应用程序的Reset_Handler            |
 
-#### **Bootloader关键功能**
+### Bootloader关键功能
 1. **固件验证**：检查应用程序完整性
 2. **固件升级**：通过UART/USB等接口接收新固件
 3. **安全跳转**：正确设置栈指针和向量表后跳转
 4. **错误恢复**：应用程序损坏时提供恢复机制
 
-#### **使用示例**
+### 使用示例
 
 ```bash
 # 编译Bootloader和应用程序
