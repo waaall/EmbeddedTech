@@ -9,7 +9,35 @@ vscode的环境配置，几乎就是相当于基于terminal的全开源流程。
 - openocd最好用`GD32EmbeddedBuilder_***\Tools\OpenOCD\`这里的`scripts/target`有最新支持的ctg文件。
 - mac 和 linux 建议用pyocd : `pip install pyocd`; 也可以用openocd,但需要一些trick: 改名字（gd32f4xx.ctg改为stm32f4xx.ctg）里面_CHIPNAME和_TARGETNAME改了就可以了。
 
-另外，[GD32-DFP](https://gd32mcu.com/data/documents/pack/GigaDevice.GD32E10x_DFP.1.2.1.pack)是keil的包，默认也是从这个网址下载，pyocd 也是在这里下载；下载失败可能是[gd32](https://gd32mcu.com)证书过期之类的，等等`pyocd pack update`再下载就好了。这个.pack文件其实就是zip文件，重命名后解压就会发现其中还是下面讲的这一套文件（CMSIS、startup、Peripheral Lib等）。
+另外，[GD32-DFP](https://gd32mcu.com/data/documents/pack/GigaDevice.GD32E10x_DFP.1.2.1.pack)是keil的包，默认也是从这个网址下载，pyocd 也是在这里下载；下载失败可能是[gd32](https://gd32mcu.com)证书过期之类的，等等`pyocd pack update`再下载就好了。这个.pack文件其实就是zip文件，重命名后解压就会发现其中还是下面讲的这一套文件（CMSIS、startup、Peripheral Lib等）。具体操作见 [我的gd32调试好的仓库](https://gitee.com/waaall/gd32-f470-vi-template.git)的README。
+
+### pyocd 
+
+#### pyocd pack install location
+- Linux: $HOME/.local/share/cmsis-pack-manager
+- Mac: $HOME/Library/Application Support/cmsis-pack-manager
+- Windows: 'C:\\Users\\$USER\\AppData\\cmsis-pack-manager'
+
+#### pyocd xml error
+
+问题：pyocd报错xml，因为svd文件头多了两个空格
+```bash
+➜  3.0.3-new ls
+3.0.3.pack
+➜  3.0.3-new mv 3.0.3.pack 3.0.3.zip  
+➜  3.0.3-new ls
+3.0.3  3.0.3.zip
+➜  3.0.3-new cd 3.0.3    
+➜  3.0.3 ls
+Device  Flash  GigaDevice.GD32F4xx_DFP.pdsc  SVD
+➜  3.0.3 cd SVD    
+➜  SVD ls
+GD32F403.SFR  GD32F403.svd  GD32F4xx.SFR  GD32F4xx.svd
+➜  SVD sudo vim GD32F4xx.svd
+
+# vim进入insert模式删了开头两个空格后 Esc :wq! 保存，再压缩成zip，重命名.pack
+```
+
 
 # arm-gcc 环境框架
 - [CMSIS](https://arm-software.github.io/CMSIS_5/General/html/index.html)
