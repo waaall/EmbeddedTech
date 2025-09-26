@@ -9,7 +9,7 @@ vscode的环境配置，几乎就是相当于基于terminal的全开源流程。
 - openocd最好用`GD32EmbeddedBuilder_***\Tools\OpenOCD\`这里的`scripts/target`有最新支持的ctg文件。
 - mac 和 linux 建议用pyocd : `pip install pyocd`; 也可以用openocd,但需要一些trick: 改名字（gd32f4xx.ctg改为stm32f4xx.ctg）里面_CHIPNAME和_TARGETNAME改了就可以了。
 
-另外，[GD32-DFP](https://gd32mcu.com/data/documents/pack/GigaDevice.GD32E10x_DFP.1.2.1.pack)是keil的包，默认也是从这个网址下载，pyocd 也是在这里下载；下载失败可能是[gd32](https://gd32mcu.com)证书过期之类的，等等`pyocd pack update`再下载就好了。这个.pack文件其实就是zip文件，重命名后解压就会发现其中还是下面讲的这一套文件（CMSIS、startup、Peripheral Lib等）。具体操作见 [我的gd32调试好的仓库](https://gitee.com/waaall/gd32-f470-vi-template.git)的README。
+另外，[GD32-DFP](https://gd32mcu.com/data/documents/pack/GigaDevice.GD32F4xx_DFP.3.0.3.pack)是keil的包，默认也是从这个网址下载，pyocd 也是在这里下载；下载失败可能是[gd32](https://gd32mcu.com)证书过期之类的，等等`pyocd pack update`再下载就好了。这个.pack文件其实就是zip文件，重命名后解压就会发现其中还是下面讲的这一套文件（CMSIS、startup、Peripheral Lib等）。具体操作见 [我的gd32调试好的仓库](https://gitee.com/waaall/gd32-f470-vi-template.git)的README。
 
 ### pyocd 
 
@@ -40,7 +40,10 @@ GD32F403.SFR  GD32F403.svd  GD32F4xx.SFR  GD32F4xx.svd
 
 
 # arm-gcc 环境框架
-- [CMSIS](https://arm-software.github.io/CMSIS_5/General/html/index.html)
+- [CMSIS5官方文档](https://arm-software.github.io/CMSIS_5/General/html/index.html)
+- [CMSIS6官方文档](https://arm-software.github.io/CMSIS_6/latest/General/index.html)
+
+![](GD32-develop.assets/CMSIS-Overview.png)
 
 |CMSIS-...|Target Processors|Description|
 |:--|:--|:--|
