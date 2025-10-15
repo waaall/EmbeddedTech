@@ -1070,5 +1070,5 @@ cortex_m reset_config sysresetreq
 2. 修改makefile中的ASM项和LD项。
 3. openocd可能要改一下`stm.ctg`的文件。
 
-就可以当作STM32F429VIT6完全走stm32的开发流程了。
+就可以当作STM32F429VIT6完全走stm32的开发流程了。具体可以见我的一个[模版仓库](https://github.com/waaall/gd32-template)---CubeMX_BareMetal分支。
 
