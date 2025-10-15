@@ -23,10 +23,9 @@
 
 make + arm-none-eabi-gcc完成arm的mcu的编译过程，不论是stm32或者GD32，都是类似的CMSIS、外设库函数、startup、和ld文件，这些文件都是干什么的，整个make + arm-none-eabi-gcc 的编译过程是怎么样的，哪些步骤需要哪些文件干什么？
 
-ARM MCU（如STM32和GD32）的编译过程以及各个文件的作用。 当前的GD32项目结构，我来详细解释ARM MCU（STM32/GD32）的编译过程和各个文件的作用：
+ARM MCU（如STM32和GD32）的编译过程以及各个文件的作用。 当前的GD32项目结构，接下来整体解释ARM MCU（STM32/GD32）的编译过程和各个文件的作用：
 
-## 1. ARM MCU项目文件结构详解
-
+## 1. ARM MCU项目结构详解
 
 ### 1.1 CMSIS层（Cortex Microcontroller Software Interface Standard）
 
@@ -35,7 +34,6 @@ ARM MCU（如STM32和GD32）的编译过程以及各个文件的作用。 当前
   - `core_cm4.h`: Cortex-M4内核定义
   - `xx32f4xx.h`: 寄存器、中断向量定义
   - `system_xx32f4xx.c`: 系统初始化函数
-
 
 #### 1.1.2 xx32f4xx.h: 寄存器、中断向量定义
 
@@ -75,7 +73,6 @@ STM32 vs GD32 常见差异：
 - Flash 控制：STM32 的 FLASH->ACR vs GD32 的 FMC/EFMC 等寄存器布局差异
 - 目标频率方案：CubeMX 生成的 STM32 system 文件按 HAL 统一风格计算；GD32 官方 system 文件常通过宏开关直选目标频率
 - HSE/HXTAL 名称与默认值不同
-
 
 ### 1.2 外设库函数（Standard Peripheral Library）
 
@@ -139,8 +136,7 @@ STM32 vs GD32 常见差异：
 - .vectors 段名可能不同（STM32 工程常叫 .isr_vector；GD32 示例里使用 __gVectors 并在 .vectors 里引用）
 - 若向量表需搬到 SRAM，ld 里需给 SRAM 里的表预留空间并暴露符号，startup 里用 SCB->VTOR 重定位。
 
-
-## 2. make + arm-none-eabi-gcc 编译流程
+## 2. make + arm-gcc 编译流程
 
  **第1步：预处理（Preprocessing）**
 ```bash
@@ -239,7 +235,326 @@ firmware.elf: $(SOURCES:.c=.o) $(STARTUP:.S=.o)
 
 这个编译流程确保了从高级C代码到最终可烧录的二进制文件的完整转换过程，每个步骤都有其特定的作用和输出。
 
-# 二: 连接/调用关系
+## 4. 中断详细讲解
+
+关于中断、内存映射等更详细的知识可以见计算机组成原理相关的课程和书籍。
+
+### 4.1 中断向量表（Interrupt Vector Table）
+
+中断向量表（Vector Table）本质上是一个**函数指针数组**，位于内存起始地址（通常是 Flash 的起始处，如 0x0800 0000）。
+
+每一项对应一个“中断源”或“异常”，记录：
+1. 异常/中断入口地址（即对应处理函数的地址）；
+2. 在复位时的第一个表项是**主栈指针初始值（MSP）**。
+
+#### 4.1.1 向量表结构
+
+在 startup_stm32f4xx.s 中（或者 GD32 的 startup 文件里）：
+```
+.section  .isr_vector,"a",%progbits
+.type  g_pfnVectors, %object
+g_pfnVectors:
+  .word  _estack                 /* 初始主栈指针 */
+  .word  Reset_Handler           /* 复位中断 */
+  .word  NMI_Handler             /* 非屏蔽中断 */
+  .word  HardFault_Handler       /* 硬错误 */
+  .word  MemManage_Handler       /* 内存管理错误 */
+  .word  BusFault_Handler        /* 总线错误 */
+  .word  UsageFault_Handler      /* 用法错误 */
+  ...
+  .word  SysTick_Handler         /* 系统滴答定时器 */
+  .word  WWDG_IRQHandler         /* 外设中断示例 */
+  .word  PVD_IRQHandler
+  ...
+```
+
+> 每个 .word 是一个地址，即函数入口。
+> 这就是**中断向量表（Vector Table）**。
+
+#### 4.1.2 向量表的存放位置
+
+Cortex-M 的中断向量表默认在：
+```
+地址 0x0000_0000
+```
+
+在 STM32 / GD32 中，这个地址通常映射到：
+```
+Flash 起始区：0x0800_0000
+```
+
+它的地址空间一般被链接脚本的 .isr_vector 段定义在 Flash 开头：
+```
+SECTIONS
+{
+  .isr_vector :
+  {
+    KEEP(*(.isr_vector))    /* startup_xx.s定义的表 */
+  } >FLASH
+  ...
+}
+```
+> 所以虽然没在 MEMORY 表里看到“vector”，它**确实就在 Flash 段最前面**，由这个 KEEP(*(.isr_vector)) 控制。
+
+
+### 4.2 中断在硬件层面
+
+当 MCU 正常执行程序时：
+
+- CPU 在取指、执行等循环中；
+- NVIC（Nested Vectored Interrupt Controller）一直监控所有中断源；
+- 一旦某个中断被触发（例如定时器溢出、外设完成、引脚电平变化）：
+
+#### 4.2.1 NVIC 判断优先级
+
+- 检查中断是否启用；
+- 与当前正在执行的异常比较优先级；
+- 如果优先级更高 → 触发异常进入序列。
+  
+####  4.2.2 Cortex-M 硬件中断处理流程
+
+|**操作**|**内容**|
+|---|---|
+|压栈|将当前 PC、xPSR、LR、R0-R3、R12 保存到栈（MSP 或 PSP）|
+|更新中断屏蔽|根据中断优先级设置|
+|跳转|取中断向量表中对应中断的入口地址，PC ← Handler 地址|
+
+当中断处理函数执行 BX LR 或 POP {..., PC} 返回时：
+
+- CPU 自动从栈中恢复先前保存的寄存器；
+- 程序继续执行被中断前的指令；
+- 这称为 **异常返回（Exception Return）**；
+- NVIC 同时更新内部状态，允许下一次中断。
+
+
+### 4.3 各文件对中断的关系
+
+| **层级**             | **作用**               |
+| ------------------ | -------------------- |
+| 链接脚本（flash.ld）     | 定义中断向量处理函数内存/flash地址 |
+| 启动汇编（startup_xx.s） | 定义中断向量表（表项 = 函数地址）   |
+| 中断声明（stm32xx_it.h） | 声明所有中断处理函数           |
+| 中断实现（stm32xx_it.c） | 实现中断函数的实际逻辑（由用户编写）   |
+
+比如：
+```
+// stm32f4xx_it.c
+void SysTick_Handler(void)
+{
+  HAL_IncTick();    // 增加系统时钟节拍
+}
+```
+
+这些函数的**符号名（Handler名）**在汇编向量表中被 .word 引用。
+
+#### 4.3.1 中断函数是如何被找到的
+
+例如：
+```
+.word SysTick_Handler
+```
+
+链接器会在所有 .o 文件中找这个符号，找到 void SysTick_Handler(void) 后将其地址填入表中。
+如果找不到，就用默认的弱定义（Default_Handler）。
+
+例如在 startup.s 中：
+```
+.weak SysTick_Handler
+.thumb_set SysTick_Handler, Default_Handler
+```
+
+> 所以如果你自己不定义某个中断函数，它就会跳转到 Default_Handler（通常是死循环）。
+
+
+### 4.4 中断向量重映射（Vector Table Relocation）
+  
+在一些系统（尤其是 RTOS 或 Bootloader）中，可能需要让中断向量表放在 RAM 或自定义 Flash 区。
+
+可以用寄存器 SCB->VTOR 设置向量表偏移地址：
+```
+SCB->VTOR = 0x08010000;  // 新的中断向量表起始地址
+```
+
+这样中断触发时 CPU 就从新位置取向量。Bootloader + Application 就是靠这个机制实现中断表切换的。
+
+### 4.5 中断总结
+
+|**阶段**|**位置**|**内容**|
+|---|---|---|
+|上电后|Flash @ 0x08000000|向量表（_estack + Handler 地址表）|
+|Reset_Handler 执行|Flash → RAM|启动汇编运行|
+|main 运行中|SRAM|普通代码执行|
+|外设事件发生|外设 → NVIC|请求中断|
+|NVIC 响应中断|查 Vector Table，PC ← Handler地址||
+|执行中断函数|SRAM（或Flash）|处理中断逻辑|
+|返回|自动出栈，恢复现场||
+
+
+# 二: ARM-MCU的内存空间定义
+
+## 1. STM32 的内存空间
+
+>  STM32（包括 GD32、Cortex-M 系列）**没有 MMU（内存管理单元）**，
+> 所以没有“虚拟内存”概念。
+> 但是 ARM Cortex-M 内核定义了 **统一的物理地址映射空间（4GB 地址空间）**，
+> 每个存储区域（Flash、SRAM、外设、系统等）都有固定地址范围。
+> 这是一张**平坦的物理地址空间图**。
+> 所有代码、数据、外设寄存器都在同一个 32 位地址空间中访问。
+
+
+### 1.1 STM32 典型内存映射图
+
+（由 ARM Cortex-M4 定义）：
+
+|**地址范围**|**说明**|**典型用途**|
+|---|---|---|
+|0x0000_0000 – 0x1FFF_FFFF|**Code Region**|主 Flash、Bootloader ROM|
+|0x2000_0000 – 0x3FFF_FFFF|**SRAM Region**|内部 SRAM|
+|0x4000_0000 – 0x5FFF_FFFF|**Peripheral Region**|外设寄存器 (GPIO, USART, TIM, etc.)|
+|0x6000_0000 – 0x9FFF_FFFF|**External RAM/Device Region**|外部 SRAM, SDRAM, FMC|
+|0xA000_0000 – 0xDFFF_FFFF|**External Device Region**|外部 NAND/NOR Flash|
+|0xE000_0000 – 0xFFFF_FFFF|**System Region**|NVIC, SCB, SysTick, MPU 等系统寄存器|
+
+
+也就是说：
+- Flash 其实是挂在 0x08000000；
+- SRAM 挂在 0x20000000；
+- 外设寄存器（如 GPIOA_ODR）挂在 0x40020014；
+- 访问任何对象其实都是访问不同的物理总线（I-Bus、D-Bus、S-Bus）。
+
+## 2. 启动时的关键内存结构
+
+当 MCU 上电后，**启动文件 (startup_xxx.s)** 决定了程序的内存布局与初始化。
+
+### 2.1 启动后的重要寄存器：
+
+- SP：从 _estack 取初始栈指针（通常在 SRAM 顶端）
+- PC：从向量表取复位向量（即程序入口 _start）
+
+### 2.2 Section
+
+（由编译器和链接器定义）
+
+|**段名**|**位置**|**含义**|**存储介质**|
+|---|---|---|---|
+|.text|Flash|程序代码、常量|Flash|
+|.rodata|Flash|只读数据|Flash|
+|.data|SRAM|初始化后的全局变量|运行时在 SRAM，初始值存在 Flash|
+|.bss|SRAM|未初始化全局变量（自动清零）|SRAM|
+|.stack|SRAM|栈区|SRAM|
+|.heap|SRAM|堆区（malloc/free）|SRAM|
+
+
+### 2.3 启动阶段发生的关键动作：
+
+
+启动汇编（startup.s）里通常包含：
+
+```
+  ldr r0, =_sidata    ; .data 段初始化数据在 Flash 中的起始地址
+  ldr r1, =_sdata     ; .data 在 RAM 中的起始地址
+  ldr r2, =_edata     ; .data 在 RAM 中的结束地址
+CopyData:
+  ldr r3, [r0], #4
+  str r3, [r1], #4
+  cmp r1, r2
+  bcc CopyData
+
+  ldr r1, =_sbss
+  ldr r2, =_ebss
+  movs r3, #0
+ZeroBss:
+  str r3, [r1], #4
+  cmp r1, r2
+  bcc ZeroBss
+```
+
+**意思是：**
+- 从 Flash (_sidata) 复制 .data 段初始值到 SRAM；
+- 把 .bss 段清零；
+- 然后跳转到 main()。
+
+
+## 3. 链接脚本 (.ld) 决定分配
+
+  
+STM32 的 STM32F4xx_FLASH.ld 是整个空间定义的“法律文件”。
+
+```
+MEMORY
+{
+  FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 2048K
+  RAM (xrw)       : ORIGIN = 0x20000000, LENGTH = 256K
+}
+
+SECTIONS
+{
+  .text :
+  {
+    KEEP(*(.isr_vector))
+    *(.text*)
+    *(.rodata*)
+  } >FLASH
+
+  .data : 
+  {
+    _sdata = .;
+    *(.data*)
+    _edata = .;
+  } >RAM AT >FLASH
+
+  .bss :
+  {
+    _sbss = .;
+    *(.bss*)
+    _ebss = .;
+  } >RAM
+}
+```
+
+**关键逻辑：**
+
+- .data 的内容“运行时在 RAM”，但“初始化值存储在 Flash”；
+    这就是 >RAM AT >FLASH 的意思。
+
+- .bss 没有初值 → 只放在 RAM；
+- .text / .rodata 全在 Flash。
+
+
+## 4. 运行时内存变化（堆栈）
+
+  
+假设 STM32F4 有：
+- Flash: 2MB (0x08000000)
+- SRAM: 256KB (0x20000000)
+
+|**区域**|**地址范围**|**内容**|**变化情况**|
+|---|---|---|---|
+|Flash .text|0x08000000–0x080xxxxx|程序代码|固定，不变|
+|Flash .rodata|同上|常量字符串等|固定，不变|
+|SRAM .data|0x20000000–0x2000xxxx|全局变量|程序运行期间变化|
+|SRAM .bss|0x2000xxxx–0x2000yyyy|未初始化变量|程序运行期间变化|
+|SRAM .heap|动态增长|malloc分配|运行时增长|
+|SRAM .stack|从顶端向下|函数调用栈|动态变化|
+
+堆与栈是相对独立增长的：
+
+```
+RAM 地址 ↑
+-------------------------
+|       STACK ↓         |
+|-----------------------|
+|        ...            |
+|-----------------------|
+| ↑ HEAP                |
+-------------------------
+RAM 地址 ↓
+```
+
+如果堆和栈相遇，就会“堆栈冲突”，导致系统崩溃。函数调用执行导致栈的动态变化过程是适用于所有计算机的，包括有虚拟内存的linux操作系统。
+
+
+# 三: 连接/调用关系
 
 
 ## 1. 连接关系
@@ -372,9 +687,9 @@ __gVectors:
          ldr r3, =_ebss      /* BSS段结束地址 */
      ```
 
-# 三: bootloader过程
-烧录到启动的过程是怎样的（每个步骤与哪些文件相关）；
+# 四: bootloader过程
 
+烧录到启动的过程是怎样的（每个步骤与哪些文件相关）？
 
 ## 第1阶段：烧录过程
 
@@ -512,10 +827,14 @@ int main(void)
 
 ### 3.4 运行期中断
 
+异常/中断发生时，内核通过 VTOR 指向的向量表找到对应 ISR 地址
+ISR 实现在 it 文件（或任意 C 文件），通常由 startup 里弱定义的默认处理函数被用户实现所覆盖。
 
-# 四: 自定义bootloader
 
-比如我自己想自定义一个启动过程，写一个 bootloader 应该如何操作？bootloader这个过程又是在哪个文件定义的？
+
+# 五: 自定义bootloader
+
+比如我自己想自定义一个启动过程，写一个 bootloader 应该如何操作？bootloader这个过程又是在哪个文件定义的？这部分我还没有展开写技术细节，之后有时间再补吧。
 
 ## Bootloader架构设计
 
@@ -562,7 +881,7 @@ make -f Makefile_bootloader flash-application
 -  **故障恢复**：应用程序损坏时可通过Bootloader恢复
 
 
-# 五: 程序移植简要说明
+# 六: 程序移植说明
 
 
 - 链接脚本：
@@ -586,3 +905,7 @@ make -f Makefile_bootloader flash-application
   - arm-none-eabi-nm your.elf | grep -E "_sidata|_sdata|_edata|_sbss|_ebss|_estack|__gVectors|g_pfnVectors"
 - 运行期核对时钟：
   - 在 main 里调用 SystemCoreClockUpdate 后打印/断点检查 SystemCoreClock
+
+## 移植具体操作
+
+待完成。
