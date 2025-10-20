@@ -1310,13 +1310,365 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 
 
 
-## 编译器
 
 
-### 系统调用warning
+
+## 系统调用warning
 
 - [_write system func](https://stackoverflow.com/questions/73742774/gcc-arm-none-eabi-11-3-is-not-implemented-and-will-always-fail)
 
+
+###  一、错误来源的本质
+
+这些警告来自 **newlib C 标准库**，它假设你的系统有一套“类似操作系统”的底层系统调用（syscall），例如：
+
+|**函数**|**功能**|**对应系统调用**|
+|---|---|---|
+|_write|向文件描述符写入数据|write()|
+|_read|从文件描述符读取数据|read()|
+|_close|关闭文件|close()|
+|_lseek|文件偏移操作|lseek()|
+|_fstat|文件状态信息|fstat()|
+|_isatty|判断是否是终端设备|isatty()|
+在Linux系统中，这些调用是由**内核实现**的；
+
+但在 **裸机（bare-metal）MCU** 上，你没有操作系统，也就没有文件系统或标准I/O设备，因此这些函数默认“没有定义”。
+
+然而，printf()、scanf() 等函数需要依赖 _write()、_read()，否则它们无法正常工作（因为需要“往哪写”、“从哪读”）。
+
+所以编译器会发出这样的警告：
+> _write is not implemented and will always fail
+
+### 二、为什么警告而不是错误？
+
+因为 newlib 库里默认**提供了这些函数的空壳版本**，返回 -1（表示失败），并设置 errno = ENOSYS（not implemented）。
+
+> 链接不会失败，但如果你的代码调用 printf()、fopen() 之类的函数，就会运行时失败或无输出。
+
+### 三、解决方案
+
+生成的STM32CubeMX 工程**中，syscalls.c 和 sysmem.c 文件中已经实现了。Makefile 中 .c 文件添加这两个文件就ok！下面的方案是对于没有实现的来讲的。
+
+#### 方案 1：忽略警告（如果你不使用 printf / 文件 I/O）
+
+如果你的固件只是裸机逻辑，不用标准 I/O，就可以完全忽略。这些警告**不会影响程序运行**。若想干净一点，可加一行 suppress 掩盖掉：
+
+```
+-Wno-unused-function -Wno-format
+```
+
+或者更干净的方式是在 syscalls.c 里定义一个空的 _write 等函数（见下）。
+
+#### 方案 2：添加最小 syscalls 支持（常用）
+
+如果你希望 printf() 输出到串口（UART），你需要自己定义 _write()：
+
+在 syscalls.c 中加入：
+
+```c
+#include <sys/stat.h>
+#include "usart.h"  // 或你自己的UART驱动
+
+// 写函数：将printf输出重定向到串口
+int _write(int file, char *ptr, int len)
+{
+    for (int i = 0; i < len; i++)
+    {
+        if (ptr[i] == '\n')  // 自动换行处理
+            usart_send_char('\r');
+        usart_send_char(ptr[i]);
+    }
+    return len;
+}
+
+// 可选：定义必要的空壳函数避免警告
+int _read(int file, char *ptr, int len) { return 0; }
+int _close(int file) { return -1; }
+int _lseek(int file, int ptr, int dir) { return 0; }
+int _fstat(int file, struct stat *st) { st->st_mode = S_IFCHR; return 0; }
+int _isatty(int file) { return 1; }
+```
+
+然后在 Makefile 的 C_SOURCES 中加入 syscalls.c。
+
+注意：
+- usart_send_char() 是你自己写的 UART 发送函数；
+- 如果你用 HAL_UART_Transmit()，也可以直接用；
+- 这样 printf("hello"); 就能输出到串口。
+
+#### 方案 3：不使用 newlib，改用 minimal I/O（如 nosys.specs）
+
+如果你不需要标准库支持，可在 Makefile 链接时使用：
+```
+LDFLAGS += -specs=nosys.specs
+```
+
+或者 nano 版本（内存更小）：
+```
+LDFLAGS += -specs=nano.specs -u _printf_float
+```
+
+nosys.specs 表示链接一个空的 syscalls 实现库，直接吞掉 _write/_read。
+
+### 四、总结
+
+|**情况**|**是否影响运行**|**是否需要修改**|**推荐方案**|
+|---|---|---|---|
+|不使用 printf() 等 I/O|否|否|忽略警告|
+|需要 UART 输出 printf()|否（但无输出）|需要自定义 _write()|✅ 定义 syscalls.c|
+|想要干净编译|否|可加 -specs=nosys.specs|✅ 或使用 nosys.specs|
+
+
+**libc_nano.a  与普通libc.a区别**
+
+- libc_nano.a 是 **newlib-nano** 精简版标准库；
+- 优点：体积小；
+- 缺点：浮点 printf 默认不支持，需要加 -u _printf_float；
+- 如果你想支持浮点输出：
+
+```
+LDFLAGS += -u _printf_float
+```
+
+### 五、解决流程
+
+生成的STM32CubeMX 工程**中：
+syscalls.c 和 sysmem.c 文件中已经实现了。
+
+
+**1.** Makefile 中 .c 文件添加这两个文件就ok：
+```
+
+```
+
+
+这样：
+- 编译警告消失；
+- printf() 可以直接输出；
+- 🧠依赖操作系统；
+- 💡 同时兼容 STM32 HAL 或 GD32 外设库。
+
+
+
+## LOAD segment with RWX permissions
+
+- [rwx-permissions](https://stackoverflow.com/questions/73429929/gnu-linker-elf-has-a-load-segment-with-rwx-permissions-embedded-arm-project)
+### 一、该warning是什么意思
+
+上文链接帖子的主要内容有 **三层意思**：
+1. **GCC 13.1.0 以前对** **const volatile** **的行为不同**。
+2. **为什么** **.flashcrc** **类似这样的自定义段会出现 RWX 标志**。
+3. **为什么这个警告其实对裸机（MCU）没有实质影响**。
+
+### 二、逐条解释
+
+#### 1. const volatile行为的变化
+
+> “Prior to version 13.1.0, GCC would place const volatile objects in a writeable section (.data) instead of read-only section (.rodata).”
+
+
+意思是，在 **GCC 13.1.0 之前**，如果你写了：
+```
+const volatile uint32_t flag = 0x1234;
+```
+
+编译器会把它放到 **.data 段（可写区）**，而不是像普通 const 一样放到 **.rodata（只读区）**。
+
+原因是：
+- volatile 表示**可能被外设修改**，编译器必须允许它被“写”；
+- const 表示**程序不能写它**；
+- 两者冲突，旧版本 GCC 选择妥协：放到 .data（可写）。
+
+从 GCC 13.1.0 开始，行为改变：
+- 现在 **仍然放到** **.rodata****（只读）**；
+- 但是对编译器优化行为做了更细的控制。
+
+这导致新旧 GCC 版本在段属性上略有差异。
+
+
+#### 2. flashcrc段与“RWX警告”
+
+> “The linker sets the attributes of the output .flashcrc section automatically based on the input sections that make it up…”
+
+
+这里在讲一个常见场景：
+
+有些工程会定义：（但是默认的stm是没有的，下文《实践过程》会提到哪些字段）
+```
+.flashcrc :
+{
+    KEEP(*(.flashcrc))
+} >FLASH
+```
+
+.flashcrc 是一个开发者自定义段（可能放校验数据或CRC）。
+
+但是：
+链接器（ld）在生成 **段属性（section attributes）** 时，
+是根据其中“源输入段”的属性自动推断的，
+而不是根据 MEMORY 块里 (rx) (rw) 等来推断的。
+
+
+所以如果 .flashcrc 段里混入了 .data、.rodata、.text 等不同属性的内容，
+链接器就可能合并出一个“**RWX**”标志的 segment。
+
+
+#### ELF 文件段属性 ≠ 实际硬件访问权限
+
+> “The flags in the elf file have no bearing on whether memory is actually writable or executable on typical embedded platforms.”
+
+关键点：
+**在 MCU 上，ELF 文件的段权限标志没有实际效果。**
+- PC 上操作系统（Linux、Windows）用 ELF 段权限控制内存访问（比如 NX bit）。
+- MCU 是裸机运行，没有 MMU（内存管理单元），也没有执行保护机制。
+- 所以即使 ELF 里显示 “RWX”，也不会让 Flash 突然变成可写。
+
+也就是说：
+> “这只是一个警告，不是功能错误。”
+
+###  三、关于 MEMORY 的误区
+
+帖子中特别指出：
+> “The attributes you specified for the different regions within the MEMORY command don’t impact this.”
+
+这非常重要：
+```
+MEMORY
+{
+  FLASH (rx) : ...
+  RAM   (rw) : ...
+}
+```
+
+这些 (rx) (rw) **只是告诉链接器默认把哪些段放在哪个区域**，
+不会真正控制 ELF 段权限，也不会决定最终的 RWX 标志。
+
+段属性的来源是：
+- 各个 .section 的定义（编译器/汇编器产生）；
+- 链接脚本中的合并逻辑。
+
+### 四、总结
+
+|**主题**|**含义**|**实际影响**|
+|---|---|---|
+|const volatile 行为变更|GCC 13.1.0 后会放 .rodata 而非 .data|导致一些段属性改变|
+|.flashcrc 段 RWX|段属性由输入段决定，非 MEMORY 指令决定|会触发 ELF 警告|
+|MEMORY 标志 (rx)/(rw)|仅指导段放置，不影响最终 ELF 权限|警告无法靠这里消除|
+|ELF 段属性与硬件访问|裸机 MCU 不关心 ELF 段权限|警告可以安全忽略|
+|修复方式|可以用 .flashcrc (READONLY) 强制属性|或者直接忽略警告|
+
+
+### 五、实践过程
+
+
+#### 1. 哪些字段可以加(READONLY)
+
+可以安全地在 .vectors、.text、.rodata、.ARM.*、.init_array 等所有驻留在 Flash 的 section 后面加上 (READONLY)。
+
+这样做的作用是：
+- 明确告诉 **linker (****ld****)**：这些段是**只读的 (R)**，
+    而不是可写 (W) 或可执行 (X) 的混合段。
+- 它能 **消除 “RWX segment” 的警告**：
+```
+warning: build/cubemx_gd32.elf has a LOAD segment with RWX permissions
+```
+
+- 因为这类段默认被 ld 推断为 RWX，而不是 RX。
+
+#### 2. 不要对 RAM 段加(READONLY)
+
+也就是：
+```
+.data
+.bss
+.heap_stack
+.tcmram
+```
+
+这些都必须是可写的，否则会导致：
+- .data 初始化数据无法从 Flash 拷贝到 RAM；
+- FreeRTOS 分配任务栈、堆等失败；
+- 程序运行直接 HardFault。
+
+所以 (READONLY) **只能加在 部分Flash 段上**。
+
+
+#### 3. READONLY是 GNU ld 的新特性（2.39+）
+
+如果你的 arm-none-eabi-ld 版本较老（例如 12.x 以下），
+
+它可能不识别 READONLY 关键字，会报：
+```
+unrecognized section attribute 'READONLY'
+```
+
+此时可以替代为传统写法：
+```
+.text :
+{
+   ...
+} >FLASH
+```
+
+没功能差异，只是没消除警告。
+
+#### 4. 改法总结
+
+你的 Flash 段可以完整写成如下：
+```
+/* ISR vectors */
+.vectors (READONLY) :
+{
+  . = ALIGN(4);
+  KEEP(*(.vectors))
+  . = ALIGN(4);
+  __Vectors_End = .;
+  __Vectors_Size = __Vectors_End - __gVectors;
+} >FLASH
+
+/* Code */
+.text (READONLY) :
+{
+  . = ALIGN(4);
+  *(.text)
+  *(.text*)
+  *(.glue_7)
+  *(.glue_7t)
+  *(.eh_frame)
+  KEEP(*(.init))
+  KEEP(*(.fini))
+  . = ALIGN(4);
+  _etext = .;
+} >FLASH
+
+/* Const data */
+.rodata (READONLY) :
+{
+  . = ALIGN(4);
+  *(.rodata)
+  *(.rodata*)
+  . = ALIGN(4);
+} >FLASH
+
+/* Exception tables */
+.ARM.extab (READONLY) :
+{
+  *(.ARM.extab* .gnu.linkonce.armextab.*)
+} >FLASH
+
+.ARM (READONLY) :
+{
+  __exidx_start = .;
+  *(.ARM.exidx*)
+  __exidx_end = .;
+} >FLASH
+
+/* Attributes & constructors */
+.ARM.attributes (READONLY) : { *(.ARM.attributes) } >FLASH
+.preinit_array (READONLY) : { KEEP(*(.preinit_array*)) } >FLASH
+.init_array (READONLY) : { KEEP(*(.init_array*)) } >FLASH
+.fini_array (READONLY) : { KEEP(*(.fini_array*)) } >FLASH
+```
 
 
 # 传感器
