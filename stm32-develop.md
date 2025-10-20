@@ -1309,6 +1309,16 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 根据您的具体需求和个人偏好，选择最适合您的方法。希望以上内容对您有所帮助！
 
 
+
+## 编译器
+
+
+### 系统调用warning
+
+- [_write system func](https://stackoverflow.com/questions/73742774/gcc-arm-none-eabi-11-3-is-not-implemented-and-will-always-fail)
+
+
+
 # 传感器
 
 ## 加速度传感器
@@ -1317,4 +1327,3 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 
 
 ### lis3dh
-
