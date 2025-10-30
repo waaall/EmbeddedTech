@@ -776,13 +776,12 @@ void *memset(void *pdst, int c, unsigned int plen)
 
 # stm32的一些问题
 
-## 环境配置相关
 
-### stm32cubeMX联网问题
+## stm32cubeMX网络问题
 Help-设置上代理应该就好了。
 
 
-## [关于 LOAD segment with RWX permissions 警告](https://www.cnblogs.com/milton/p/16756523.html)
+## [LOAD segment with RWX permissions 警告](https://www.cnblogs.com/milton/p/16756523.html)
 使用GCC Arm工具链开发的项目, 在升级到 arm-gnu-toolchain-12.2 之后, 编译出现警告
 
 ```sql
@@ -791,7 +790,7 @@ arm-gnu-toolchain-12.2.mpacbti-bet1-x86_64-arm-none-eabi/bin/../lib/gcc/arm-none
 
 这是 Binutils 2.39 引入的一个新的安全类型的警告, GCC在升级版本时会带着新版本的 Binutils 一起发布. 如果要消除这个警告, 要么修改ld文件, 要么屏蔽掉它.
 
-## 说明
+### 说明
 这篇文章里有比较详细的说明  
 [https://www.redhat.com/en/blog/linkers-warnings-about-executable-stacks-and-segments](https://www.redhat.com/en/blog/linkers-warnings-about-executable-stacks-and-segments)
 
@@ -811,13 +810,13 @@ readelf -lW <file>
 
 注意: 在readelf的输出中, 段的可执行标志被标记为E而不是X, 三个属性的标识为RWE而不是RWX. 警告出现的常见原因是使用自定义连接脚本进行链接, 该脚本未将代码和数据分成不同的段, 所以最好的解决办法是更新连接脚本. readelf命令将显示每个段包含哪些部分, 可以通过这些信息计算出连接器映射需要如何更新, 才能将代码部分和可写的数据部分分开.
 
-## 消除 LOAD segment with RWX permissions 警告
+### 解决方案
 
-## 选项一: 使用 --no-warn-rwx-segments 屏蔽
+#### 1. 使用 --no-warn-rwx-segments 屏蔽
 -   如果连接使用的是ld, 可以用`--no-warn-rwx-segments`选项
 -   如果连接使用的是gcc, 直接用会提示无法识别的选项, 需要用`-Wl,--no-warn-rwx-segments`这样的方式
 
-## 选项二: 修改连接描述
+#### 选项二: 修改连接描述
 对于存在问题的elf, 可以通过这个命令查看文件结构, 注意后面的**Flg**部分, RWE分别表示Read,Write,Execute.
 
 ```x86asm
@@ -885,9 +884,9 @@ Segment Sections...
 
 实际上, 对于Cortex M系列的MCU而言, elf中第一个segment对应的实际上是烧录到flash中的部分(可执行), 第二个segment对应的才是运行时可读写的内存部分(数据), 第一个segment在通过flash启动正常运行时并不存在修改的可能性.
 
-因此结论是可以通过选项一, 简单地将警告屏蔽掉
+因此结论是可以通过选项一, 简单地将警告屏蔽掉。
 
-## 参考
+### 参考
 
 -   [https://github.com/raspberrypi/pico-sdk/issues/1029](https://github.com/raspberrypi/pico-sdk/issues/1029)
 -   [https://stackoverflow.com/questions/73429929/gnu-linker-elf-has-a-load-segment-with-rwx-permissions-embedded-arm-project](https://stackoverflow.com/questions/73429929/gnu-linker-elf-has-a-load-segment-with-rwx-permissions-embedded-arm-project)
