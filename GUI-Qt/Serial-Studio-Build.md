@@ -1,7 +1,7 @@
 
 - [Serial-Studio](https://github.com/Serial-Studio/Serial-Studio)
 
-# Mac serial studio build
+## Mac serial studio build
 ```
 
 ## Command: Locate qt-cmake
@@ -11,21 +11,21 @@ $ which qt-cmake || true
   /opt/homebrew/bin/qt-cmake
 ```
 
-## Command: Query logical CPU count via sysctl
+### Command: Query logical CPU count via sysctl
 
 ```bash
 $ sysctl -n hw.logicalcpu
   sysctl: sysctl fmt -1 1024 1: Operation not permitted
 ```
 
-## Command: Query logical CPU count via getconf
+### Command: Query logical CPU count via getconf
 
 ```bash
 $ getconf _NPROCESSORS_ONLN
   11
 ```
 
-## Command: Configure Release build with qt-cmake
+### Command: Configure Release build with qt-cmake
 
 ```bash
 $ qt-cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DPRODUCTION_OPTIMIZATION=ON
@@ -95,7 +95,7 @@ $ qt-cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DPRODUCTION_OPTIMIZ
   release
 ```
 
-## Command: Build Release target (output truncated to 10,240 characters by tool)
+### Command: Build Release target 
 
 ```bash
 $ cmake --build build-release --parallel 11
@@ -161,7 +161,7 @@ $ cmake --build build-release --parallel 11
   (Output truncated after the portion returned by the tooling.)
 ```
 
-## Command: Inspect Release app bundle directory
+### Command: Inspect Release app bundle directory
 
 ```bash
 $ ls build-release/app
@@ -180,8 +180,17 @@ $ ls build-release/app
   translations
 ```
 
-## Command: Inspect Release executable location
+
+### 问题 qt-cmake & cmake
 
 ```bash
-$ ls build-release/app/Serial-Studio-GPL3.app/Contents/MacOS
-  Serial-Studio-GPL3
+qt-cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release -DPRODUCTION_OPTIMIZATION=ON
+cmake --build build-release --parallel 8
+```
+ 为什么我是qt-cmake 然后再 cmake的，都用qt-cmake 或者 都用 cmake可以吗？有什么区别？为什么代码里略有不同？
+
+- 配置阶段用 qt-cmake 是因为它是 Qt 官方提供的 CMake 包装器，会在调用真正的 cmake 之前自动加上 Qt 安装目录的 CMAKE_PREFIX_PATH、QT_HOST_PATH 等变量。这样即使系统 PATH 里没有 Qt，也能正确找到 Qt6Config.cmake、QML 模块等。
+
+- 一旦配置完成，这些路径已经写进 build-release/CMakeCache.txt，后续的编译/打包只需 cmake --build：它会读取缓存并调用生成器（Ninja、Make、MSBuild 等）。用 qt-cmake --build 也行，只是它又转手调用 cmake --build，效果完全一样。
+
+- 如果从头到尾都用 cmake，那配置时你得手动加上类似 -DCMAKE_PREFIX_PATH=C:\Qt\6.6.3\msvc2019_64 之类的参数，否则 CMake 会找不到 Qt；用 qt-cmake 就不用自己管理这些变量。
