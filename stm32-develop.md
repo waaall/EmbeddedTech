@@ -464,6 +464,147 @@ TIM_IT_Trigger：触发事件(计数器启动、停止、初始化或者由内�
 ![](stm32-develop.assets/stm32_HAL_定时器开关函数.jpg)
 
 
+### 输入捕获
+
+- Polarity Selection用于配置极性选择，这里配置上升沿；
+- IC Selection 配置为Direct，为直连模式，即配置IC1直接映射在TI1上；
+- Prescaler Division Ratio用于配置配置输入分频，这里选择为No division，即不分频。要注意的是，如果设置了分频比，例如设置为2，表示捕获到2个上升沿才产生一次中断；
+- Input Filter (4 bits value) 配置输入滤波器参数，这里配置为0，即不滤波。  
+    **Input Capture Channel 2参数配置如下：**
+- Polarity Selection这里配置下降沿；
+- IC Selection 配置为Direct，为直连模式，即配置IC2直接映射在TI1上；
+- Prescaler Division Ratio用于配置配置输入分频，这里选择为No division，即不分频
+
+#### Input Filter
+
+从0到f，如下：
+
+| **ICxF 值** | **输入滤波采样频率**                    | **采样次数**      |
+| ---------- | ------------------------------- | ------------- |
+| 0000       | 无滤波，直接响应                        | —             |
+| 0001       | fSAMPLING = fCK_INT, N=2        | 2个连续采样一致才有效   |
+| 0010       | fSAMPLING = fCK_INT, N=4        | 4×T_DTS       |
+| 0011       | fSAMPLING = fCK_INT, N=8        | 8×T_DTS       |
+| 0100       | fSAMPLING = fCK_INT/2, N=6      | 12×T_DTS      |
+| 0101       | fSAMPLING = fCK_INT/2, N=8      | 16×T_DTS      |
+| 0110       | fSAMPLING = fCK_INT/4, N=6      | 24×T_DTS      |
+| 0111       | fSAMPLING = fCK_INT/4, N=8      | 32×T_DTS      |
+| 1000       | fSAMPLING = fCK_INT/8, N=6      | 48×T_DTS      |
+| 1001       | fSAMPLING = fCK_INT/8, N=8      | 64×T_DTS      |
+| 1010       | fSAMPLING = fCK_INT/16, N=5     | 80×T_DTS      |
+| 1011       | fSAMPLING = fCK_INT/16, N=6     | 96×T_DTS      |
+| 1100       | fSAMPLING = fCK_INT/16, N=8     | 128×T_DTS     |
+| 1101       | fSAMPLING = fCK_INT/32, N=5     | 160×T_DTS     |
+| 1110       | fSAMPLING = fCK_INT/32, N=6     | 192×T_DTS     |
+| **1111**   | **fSAMPLING = fCK_INT/32, N=8** | **256×T_DTS** |
+比如timer分频之后的频率是：fDTS = 16MHz，那么
+  
+您发现了一个很好的问题！让我重新核对STM32官方手册中TIM_ICFilter的定义。
+
+## 问题分析
+
+我之前给出的表格存在错误。让我查阅STM32官方参考手册后，给出**正确的TIM_ICFilter编码表**。
+
+## STM32官方TIM_ICFilter定义
+
+根据STM32参考手册（RM0090），**正确的编码表**如下：
+
+### 完整的TIM_ICFilter映射表
+
+|ICF[3:0]|采样时钟|连续采样次数N|滤波时间计算|
+|---|---|---|---|
+|0000 (0x0)|无滤波|-|0|
+|0001 (0x1)|fCK_INT|N=2|2/fCK_INT|
+|0010 (0x2)|fCK_INT|N=4|4/fCK_INT|
+|0011 (0x3)|fCK_INT|N=8|8/fCK_INT|
+|0100 (0x4)|fDTS/2|N=6|12/fDTS|
+|0101 (0x5)|fDTS/2|N=8|16/fDTS|
+|0110 (0x6)|fDTS/4|N=6|24/fDTS|
+|0111 (0x7)|fDTS/4|N=8|32/fDTS|
+|1000 (0x8)|fDTS/8|N=6|48/fDTS|
+|1001 (0x9)|fDTS/8|N=8|64/fDTS|
+|1010 (0xA)|fDTS/16|N=5|80/fDTS|
+|1011 (0xB)|fDTS/16|N=6|96/fDTS|
+|1100 (0xC)|fDTS/16|N=8|128/fDTS|
+|1101 (0xD)|fDTS/32|N=5|160/fDTS|
+|1110 (0xE)|fDTS/32|N=6|192/fDTS|
+|1111 (0xF)|fDTS/32|N=8|256/fDTS|
+
+**注意**：您提供的简化表格似乎是另一种表述方式，但与官方手册存在差异。
+
+## 根据您的代码配置重新计算
+
+### 当前配置参数
+
+- 
+- 
+- 
+- 
+
+### 0x0F 的实际效果（官方定义）
+
+- 
+- 
+- 
+- 
+
+## 您提供的表格分析
+
+您的表格显示的滤波时间与我之前计算的**不一致**。让我核对：
+
+如果按照您的表格（假设基于不同的参考或芯片系列）：
+
+- 
+- 
+- 
+- 
+
+但这与STM32F4系列官方手册不符。
+
+## 针对您的需求重新推荐
+
+### 目标：10μs左右的滤波时间
+
+基于**正确的官方定义**和您的配置：
+
+- 
+- 
+- 
+- 
+
+|Filter|采样时钟|N|滤波时间|评价|
+|---|---|---|---|---|
+|0x06|fDTS/4 = 1.25MHz|6|4.8μs|偏小|
+|0x07|fDTS/4 = 1.25MHz|8|6.4μs|较合适|
+|0x08|fDTS/8 = 625kHz|6|9.6μs|**推荐** ✓|
+|0x09|fDTS/8 = 625kHz|8|12.8μs|略大|
+|0x0A|fDTS/16 = 312.5kHz|5|16μs|较大|
+
+### 如果timer 16MHz
+
+假设改为16MHz计数频率 + TIM_CKD_DIV1：
+
+fDTS = 16MHz
+
+| Filter | 采样时钟             | N   | 滤波时间    |
+| ------ | ---------------- | --- | ------- |
+| 0x01   | fDTS = 16MHz     | 2   | 0.125μs |
+| 0x02   | fDTS = 16MHz     | 4   | 0.25μs  |
+| 0x03   | fDTS = 16MHz     | 8   | 0.5μs   |
+| 0x04   | fDTS/2 = 8MHz    | 6   | 0.75μs  |
+| 0x05   | fDTS/2 = 8MHz    | 8   | 1μs     |
+| 0x06   | fDTS/4 = 4MHz    | 6   | 1.5μs   |
+| 0x07   | fDTS/4 = 4MHz    | 8   | 2μs     |
+| 0x08   | fDTS/8 = 2MHz    | 6   | 3μs     |
+| 0x09   | fDTS/8 = 2MHz    | 8   | 4μs     |
+| 0x0A   | fDTS/16 = 1MHz   | 5   | 5μs     |
+| 0x0B   | fDTS/16 = 1MHz   | 6   | 6μs     |
+| 0x0C   | fDTS/16 = 1MHz   | 8   | 8μs     |
+| 0x0D   | fDTS/32 = 500kHz | 5   | 10μs    |
+| 0x0E   | fDTS/32 = 500kHz | 6   | 12μs    |
+| 0x0F   | fDTS/32 = 500kHz | 8   | 16μs    |
+
+
 ### 定时器问题
 #### 定时器中断无法使用HAL_Delay
 - [定时器中断无法使用HAL_Delay](https://blog.csdn.net/m0_57147943/article/details/123518122)
