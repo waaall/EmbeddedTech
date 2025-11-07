@@ -33,3 +33,14 @@ brew install qt
 ### Ubuntu
 
 
+## 基础设计
+
+- [随笔分类 - Qt](https://www.cnblogs.com/linuxAndMcu/category/2426921.html?page=8)
+
+
+
+## 性能优化
+
+### cpu占用率高
+
+- [Qt 性能优化之一 CPU占用率高的原因](https://www.cnblogs.com/linuxAndMcu/p/17145325.html "发布于 2023-02-22 17:47")
