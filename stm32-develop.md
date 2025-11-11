@@ -1060,6 +1060,10 @@ HAL_UART_Transmit(&huart2, send_buffer, sizeof(send_buffer), HAL_MAX_DELAY);
 - 注意递归调用的开端函数最后代码后执行（我就是在这里处理缓冲区发现没用）
 
 
+## 关于SDIO
+
+SDIO的时钟在初始化时要低于400KHz。时钟信息要严格参照 main.c 中的 SystemClock_Config 计算得出；
+
 ## 关于ADC
 
 ### HAL_ADC_ConvCpltCallback
