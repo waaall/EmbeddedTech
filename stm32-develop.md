@@ -5,8 +5,8 @@
 ### 开源库
 - [libopencm3](https://github.com/libopencm3/libopencm3)
 - [STMems_Standard_C_drivers](https://github.com/STMicroelectronics/STMems_Standard_C_drivers)
-- 
-###  网址/博客
+
+### 网址/博客
 - [STM32开发环境搭建(ARM-GCC)](https://microdynamics.github.io/1.%20Breeze%20Mini四轴飞行器/2.2%20STM32开发环境搭建(ARM-GCC)/)
 - [windows开源STM32开发环境](https://blog.csdn.net/zhangfan2256/article/details/132196426)
 - [Windows 下构建 STM32 开发环境](https://wangyuyang.me/posts/windows下构建stm32开发环境/)
@@ -22,57 +22,51 @@
 - [遥想星空-stm32-MX应用为主](https://www.bilibili.com/video/BV1Wv411Y7KX)
 
 ## 开发环境配置
-不使用 IDE，而是通过命令行工具和其他独立工具进行 STM32开发，优点就是开源免费且无需担心法律风险，官网或者github下载无需担心安装包风险，有利于深入了解开发工具，缺点就是更费时。
-整个开发过程可以按照以下步骤进行：安装工具、开发、编译、烧录和调试。在这个流程中，完全依赖命令行工具和文本编辑器进行开发。STM32CubeMX 用于生成初始化代码，vscode用来写代码，armGNU 工具链用于编译代码，OpenOCD 用于烧录和调试。
-当然，如果使用STM32CubeIDE，这些工具都无需配置，下文讲一讲STM32Cube包的关系。
-### STM32Cube包的关系
-本来是vscode-stm32插件，结果stm插件有问题，多了很多依赖，就研究了一下这几个依赖的关系---[STM32CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)、[STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)和[STM32CubeIDE](https://www.st.com.cn/zh/development-tools/stm32cubeide.html)的关系。BTW，也没必要整太多插件，手动写写配置文件比较好，能熟悉一下每个工具。
-#### STM32CubeMX
-[STM32CubeMX](https://www.st.com.cn/zh/development-tools/stm32cubemx.html)生成适用于stm32具体机型的初始化c代码（还有一些初始化硬件如时钟、端口等功能），它的目的是让用其他平台的开发者快速形成可用的stm32的C语言代码，所以它没有代码编辑器、交叉编译器、下载器、调试器等很多工具。
+不使用 IDE，而是通过命令行工具和独立组件进行 STM32 开发。优点是开源免费、安装来源可控，也便于理解各工具的作用；缺点是整体配置更耗时。
+流程可以简单归纳为：安装工具 → 开发 → 编译 → 烧录 → 调试。STM32CubeMX 负责生成初始化代码，VS Code 用于编辑，GNU Arm 工具链用于编译，OpenOCD 用于烧录和调试。如果直接使用 STM32CubeIDE，则无需逐一配置这些工具。下面梳理 STM32Cube 相关包的关系。
 
-- 直观的STM32微控制器和微处理器选择 
-- 丰富易用的图形用户界面，允许配置： 
-    - 支持自动冲突解决的引脚分配 
-    - 支持面向Arm® Cortex®-M内核带参数约束动态验证的外设和中间件功能模式 
-    - 支持动态验证时钟树配置 
-    - 带功耗结果估算的功耗序列 
-- 生成与面向Arm® Cortex®-M内核的IAR Embedded Workbench®、MDK-ARM和STM32CubeIDE（GCC编译器）兼容的初始化C代码 
-- 生成面向Arm® Cortex®-A内核（STM32微处理器）的部分Linux®设备树 
-- 借助STM32PackCreator开发增强型STM32Cube扩展包 
-- 将STM32Cube扩展包集成到项目中 
-- 作为可在Windows®、Linux®和macOS®（macOS®是苹果公司在美国和其他国家与地区的商标）操作系统和64位Java运行环境上运行的独立软件提供 and other countries.) operating systems and 64-bit Java Runtime environment
+### STM32Cube包的关系
+vscode-stm32 插件依赖较多且存在问题，因此梳理 [STM32CubeCLT](https://www.st.com/en/development-tools/stm32cubeclt.html)、[STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html) 和 [STM32CubeIDE](https://www.st.com.cn/zh/development-tools/stm32cubeide.html) 的关系。插件不必装太多，手动编写配置文件更能理解工具链。
+
+#### STM32CubeMX
+[STM32CubeMX](https://www.st.com.cn/zh/development-tools/stm32cubemx.html) 生成针对具体型号的初始化 C 代码（含时钟、端口等基本初始化），不包含代码编辑器、交叉编译器或调试工具。
+
+- 直观的 STM32 微控制器/微处理器选择。
+- 图形化配置（自动冲突处理）：
+  - 引脚分配
+  - 外设和中间件模式（含参数约束验证）
+  - 时钟树动态验证
+  - 功耗估算
+- 生成兼容 IAR、MDK-ARM、STM32CubeIDE（GCC）的初始化 C 代码。
+- 为 Cortex-A 设备生成部分 Linux 设备树。
+- 支持 STM32PackCreator 扩展包的开发与集成。
+- Windows、Linux、macOS（需 64 位 JRE）均可独立运行。
+
 #### STM32CubeCLT
-集成了交叉编译器、下载器、调试器等很多工具，因为是命令行工具，所以需要加入环境变量，不过若使用命令行开发，交叉编译器、下载器、调试器都无需下载stm的，而是下载开源通用的，这样有利于开发其他平台。
-- Distribution of command-line tools and system view descriptors (SVD) extracted from STM32CubeIDE 
-- STM32Cube MCU Packages support for STM32 microcontrollers (MCU) at the following development steps: 
-    - Compile and link 
-    - Target board programming 
-    - Application run 
-    - Application debugging 
-- The STM32CubeCLT toolset includes: 
-    - GNU C/C++ for Arm® toolchain executables such as arm-none-abi-gcc (compiler), arm-none-abi-nm (symbol viewer), and many more 
-    - GDB debugger client and server 
-    - STM32CubeProgrammer (STM32CubeProg) utility 
-    - System view descriptor files (.SVD) for the entire STM32 MCU portfolio 
-    - Map file associating STM32 MCUs and MCU development boards to the appropriate SVD
+集成交叉编译器、下载器、调试器等命令行工具，需要手动加入环境变量。若偏好纯命令行，也可以直接使用开源通用工具链便于跨平台。
+
+- 提供 STM32CubeIDE 中提取的命令行工具和 SVD。
+- 支持编译/链接、烧录、运行、调试等开发环节。
+- 包含 GNU C/C++ for Arm 工具链（如 arm-none-eabi-gcc、arm-none-eabi-nm 等）、GDB 客户端与服务端、STM32CubeProgrammer、全系列 SVD，以及 MCU/开发板到对应 SVD 的映射表。
 
 #### STM32CubeIDE
-[STM32CubeIDE](https://www.st.com.cn/zh/development-tools/stm32cubeide.html)是一个“集大成”软件，其集成了STM32CubeMX的功能，同时也集成了STM32CubeCLT的功能，还继承了代码编辑器(代码高亮跳转等功能)的功能，也就是类似apple平台开发下的Xcode，或者windows下的Visual Studio。
+[STM32CubeIDE](https://www.st.com.cn/zh/development-tools/stm32cubeide.html) 集成了 STM32CubeMX 和 STM32CubeCLT，并提供 Eclipse/CDT 的代码编辑和调试功能，类似 Xcode 或 Visual Studio。
 
-- 通过STM32CubeMX来集成服务：STM32微控制器、微处理器、开发平台和示例项目选择引脚排列、时钟、外设和中间件配置项目创建和初始化代码生成具有增强型STM32Cube扩展包的软件和中间件
-- 基于Eclipse®/CDT™，支持Eclipse®插件、GNU C/C++ for Arm®工具链和GDB调试器 
-- STM32MP1 系列：支持OpenSTLinux项目：Linux支持Linux
-- 其他高级调试功能包括：CPU内核、外设寄存器和内存视图实时变量查看视图系统分析与实时跟踪(SWV)CPU故障分析工具支持RTOS感知调试，包括Azure
-- 支持ST-LINK（意法半导体）和J-Link (SEGGER)调试探头 
-- 从Atollic® TrueSTUDIO®和AC6 System Workbench for STM32 (SW4STM32)导入项目
+- 通过 STM32CubeMX 集成芯片/板卡选择、引脚、时钟、外设和中间件配置以及代码生成（含扩展包）。
+- 基于 Eclipse/CDT，支持插件、GNU C/C++ for Arm 工具链和 GDB 调试。
+- STM32MP1 支持 OpenSTLinux 项目。
+- 高级调试：CPU/外设寄存器/内存视图、实时变量查看、系统分析与 SWV 跟踪、故障分析、RTOS 感知调试等。
+- 支持 ST-LINK 和 J-Link 调试探头。
+- 可从 Atollic TrueSTUDIO、AC6 SW4STM32 导入项目。
+
 ### 1. 安装必要的工具
-首先，需要安装以下工具：（别忘了检查是否加入环境变量）
-- [STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)：用于生成初始化代码。
-- [GNU Arm Embedded Toolchain Downloads](https://developer.arm.com/downloads/-/gnu-rm)：用于交叉编译编译代码。
-- [OpenOCD](https://openocd.org/pages/getting-openocd.html)：用于烧录和调试。或者[pyocd](https://pyocd.io/docs/)
-- [STlink驱动](https://www.st.com.cn/zh/development-tools/stsw-link009.html)：用于烧录。或者[cmsis-DAP-v2](https://arm-software.github.io/CMSIS_5/DAP/html/dap_install.html)（不需要驱动）
-- **GCC & Make & git**：用于管理构建过程（可选，如果使用 `Makefile`）。不同操作系统的开发机器有所不同，windows安装msys2安装mingw64，mac就是xcode command line tools，linux则是build-essential。
-- vscode或者sublime用于写代码：更推荐vscode用来写一些有一定体量的工程化代码，sublime更轻量功能也更少一些。
+安装工具时注意加入环境变量：
+- [STM32CubeMX](https://www.st.com/en/development-tools/stm32cubemx.html)：生成初始化代码。
+- [GNU Arm Embedded Toolchain Downloads](https://developer.arm.com/downloads/-/gnu-rm)：交叉编译工具链。
+- [OpenOCD](https://openocd.org/pages/getting-openocd.html) 或 [pyocd](https://pyocd.io/docs/)：烧录和调试。
+- [STlink驱动](https://www.st.com.cn/zh/development-tools/stsw-link009.html) 或 [cmsis-DAP-v2](https://arm-software.github.io/CMSIS_5/DAP/html/dap_install.html)（CMSIS-DAP 无需驱动）。
+- **GCC/Make/git**：管理构建流程；Windows 推荐 msys2 + mingw64，macOS 使用 Xcode Command Line Tools，Linux 安装 build-essential。
+- VS Code 或 Sublime：建议 VS Code 处理工程化代码，Sublime 更轻量但功能有限。
 
 ### gcc-arm-embedded 和 arm-none-eabi-gcc 区别
 
@@ -111,14 +105,14 @@ text    data     bss     dec     hex filename
 - `dec`: 总大小，无直接意义。
 
 #### mac & linux 编译工具安装
-```c
-// mac
-(xcode command line tools)
+```bash
+# macOS
+xcode-select --install
 brew install --cask gcc-arm-embedded
 brew install stlink
 
-//ubuntu
-sudo apt install build-essentials
+# Ubuntu
+sudo apt install build-essential
 sudo apt install stlink-tools
 ```
 
@@ -133,9 +127,8 @@ Uninstall `arm-none-eabi-gcc` from brew and install the toolchain with:
 brew install --cask gcc-arm-embedded
 ```
 ### vscode config
-可以设置个`.vscode`文件夹，然后设置上`settings.json`、`c_cpp_properties.json`、`tasks.json`和`launch.json`。不用整这些（`c_cpp_properties.json`还是要的，不然vscode找不到函数/变量的引用），直接打开vscode中的terminal然后make就行（make和交叉编译的exe文件夹都要加入环境变量）。 
+可以设置 `.vscode` 文件夹，配置 `settings.json`、`c_cpp_properties.json`、`tasks.json`、`launch.json`。如果直接在 VS Code 终端执行 make，也要确保 make 和交叉编译工具在环境变量中（`c_cpp_properties.json` 依然推荐配置，便于代码分析）。
 ```json
-
 {
     "configurations": [
         {
@@ -229,14 +222,14 @@ brew install --cask gcc-arm-embedded
    
 2. **配置 OpenOCD**：
    - 确保 OpenOCD 已安装并配置好。还需要一个 OpenOCD 配置文件（`*.cfg`），它指定目标芯片和调试适配器。
-   - copy `your_openocd_dir/openocd/scripts/interface/stlink.cfg`and `your_openocd_dir/openocd/scripts/target/stm32l0.cfg` to your project folder.
-   - 使用以下命令启动 OpenOCD：
+   - 可将 `openocd/scripts/interface/stlink.cfg` 与 `openocd/scripts/target/stm32l0.cfg` 复制到工程目录，便于调用。
+   - 示例命令：
      ```sh
-     # windows
+     # Windows
      openocd -f stlink.cfg -f stm32l0.cfg -c init -c halt -c "flash write_image erase build/yourfile.bin 0x08000000" -c reset -c shutdown
      ```
-或者，写到makefile里，然后用make download命令运行。
-```bash
+   - 也可以写入 Makefile，使用 `make download` 调用：
+```makefile
 #######################################
 # make download
 #######################################
@@ -245,37 +238,37 @@ OPENOCD_TARGET = stm32l4x.cfg
 OPENOCD_FLASH_START = 0x08000000
 
 download:
- openocd -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET) -c init -c halt -c "flash write_image erase $(BUILD_DIR)/$(TARGET).bin $(OPENOCD_FLASH_START)" -c reset -c shutdown
+	openocd -f $(OPENOCD_INTERFACE) -f $(OPENOCD_TARGET) -c init -c halt -c "flash write_image erase $(BUILD_DIR)/$(TARGET).bin $(OPENOCD_FLASH_START)" -c reset -c shutdown
 ```
 
 3. **烧录代码**：
    - 在命令行中使用以下命令进行烧录：
      ```sh
-     # linux
+     # Linux
      openocd -f stlink.cfg -f stm32g4x.cfg -c init -c "reset halt" -c "wait_halt" -c "flash write_image erase build/zx_pacemaker_beta0.4.elf" -c reset -c shutdown
      ```
    - 这将把 `zx_pacemaker_beta0.4.elf` 文件烧录到 STM32 微控制器中，并复位芯片。
 
 ### 6. 调试
 #### vscode插件调试
-Cortex-debug插件，然后在 `.vscode`文件夹 写一个上文的  `launch.json`
+使用 Cortex-Debug 插件，在 `.vscode` 目录下配置前述 `launch.json` 即可。
+
 #### Cortex-debug设置（openocd & arm-gcc）
 
-[问题](https://github.com/Marus/cortex-debug/issues/650)：Failed to launch OpenOCD GDB Server: Error: spawn /usr/local/bin EACCES
-your OpenOCDPath is incomplete...pointing to a directory rather than an executable
+[问题](https://github.com/Marus/cortex-debug/issues/650)：`Failed to launch OpenOCD GDB Server: Error: spawn /usr/local/bin EACCES`，原因是 `openocdPath` 指向了目录而非可执行文件。
+
 ```bash
-# 错误的
+# 错误示例
 "cortex-debug.openocdPath": "/usr/local/bin",
 ```
 
-Which resulted in this a bad launch
+会导致类似的启动命令：
 ```bash
 Launching gdb-server: /usr/local/bin -c "gdb_port 50000" -c "tcl_port 50001" -c "telnet_port 50002" -s ~/pico/openocd/tcl -f /home/myself/.vscode/extensions/marus25.cortex-debug-1.4.4/support/openocd-helpers.tcl -f interface/picoprobe.cfg -f target/rp2040.cfg
 ```
 
-Change it to
+应改为指向具体可执行文件：
 ```bash
-# 正确的
 "cortex-debug.openocdPath": "/usr/local/bin/openocd",
 ```
 #### 命令行调试
@@ -300,32 +293,33 @@ Change it to
 
 ### 7. 上位机串口工具
 #### [Serial Studio](https://github.com/Serial-Studio/Serial-Studio)
-linux、mac、windows平台可用
+支持 Linux、macOS、Windows。
 ```bash
-# mac 可以brew安装，有网络问题也可以下载github release
+# mac 可以 brew 安装，也可直接下载 GitHub release
 brew install --cask serial-studio
 ```
 
 ```c
-# 单片机的串口发送数据要与serial-studio的设置对应上，
-# 比如波特率，设置帧头$帧尾\n，多通道数据间隔符号","
+// 单片机的串口发送参数要与 Serial Studio 配置一致：
+// 比如波特率、帧头 $、帧尾 \n、多通道间隔符 ","
 
-# 单通道数据示例，serial-studio选multiplots---plot
+// 单通道数据示例（Serial Studio 选 multiplots -> plot）
 static char message[10] = "";
 sprintf(message, "$%d\n", adc_v_int);
 HAL_UART_Transmit_DMA(huart_addr, (uint8_t*)message, strlen(message));
 
-# 多通道数据示例（三轴加速度传感器）,serial-studio选加速度传感器数据
+// 多通道数据示例（三轴加速度传感器，Serial Studio 选加速度传感器数据）
 static char accel_message[32] = "";
 int16_t accel_raw[3];
 LIS3DH_ReadRawData(accel_raw);
-sprintf(accel_message, "$%d,%d,%d\n", 
-                        accel_raw[0]/16, // X轴
-                        accel_raw[1]/16, // Y轴
-                        accel_raw[2]/16  // Z轴
-        );
- HAL_UART_Transmit_DMA(huart_addr, (uint8_t*)accel_message,
-									 strlen(accel_message))
+sprintf(accel_message, "$%d,%d,%d\n",
+        accel_raw[0] / 16, // X 轴
+        accel_raw[1] / 16, // Y 轴
+        accel_raw[2] / 16  // Z 轴
+);
+HAL_UART_Transmit_DMA(huart_addr,
+                      (uint8_t*)accel_message,
+                      strlen(accel_message));
 ```
 #### [Serial Test](https://github.com/wh201906/SerialTest)
 
@@ -344,8 +338,7 @@ SerialTest本身不支持各类USB串口设备(FT232、CH340、CP2102等，以�
 
 # HAL库
 ## stm不同库的关系
-现在stm主推的就是LL&HAL库，LL是更底层的，HAL是抽象程度更高的，也都是开源的，你下载的就有源码。相比之下，标准库（何为标准，ARM牵头定义的[CMSIS](https://arm-software.github.io/CMSIS_6/latest/General/index.html)标准，符合这个标准的库就叫标准库）stm已不经常更新。
-都是开源，都可以学习，只能说，用stm的话那就还是HAL&LL库。标准库也会在下面章节简单介绍。
+当前 STM 推 LL 与 HAL 库：LL 更贴近寄存器，HAL 抽象程度更高，源码均已开源。标准库基于 ARM 牵头的 [CMSIS](https://arm-software.github.io/CMSIS_6/latest/General/index.html)，官方更新较少，但仍可参考学习，后文会简要提到。
 ![stm32_embedded_software](en.stm32_embedded_software_sc961.jpg)
 
 
@@ -358,30 +351,30 @@ SerialTest本身不支持各类USB串口设备(FT232、CH340、CP2102等，以�
 这当然不是最终的封装，因为还是有大量位操作。
 ```c
 // 外设基地址
-define PERIPH_BASE ((unsigned int)0x40000000)
+#define PERIPH_BASE ((unsigned int)0x40000000)
 
 // 总线基地址
-define APB1PERIPH_BASE PERIPH_BASE
-define APB2PERIPH_BASE (PERIPH_BASE + 0x00010000)
-define AHBPERIPH_BASE (PERIPH_BASE + 0x00020000)
+#define APB1PERIPH_BASE PERIPH_BASE
+#define APB2PERIPH_BASE (PERIPH_BASE + 0x00010000)
+#define AHBPERIPH_BASE  (PERIPH_BASE + 0x00020000)
 
 // GPIO 外设基地址
-define GPIOA_BASE (APB2PERIPH_BASE + 0x0800)
-define GPIOB_BASE (APB2PERIPH_BASE + 0x0C00)
-define GPIOC_BASE (APB2PERIPH_BASE + 0x1000)
-define GPIOD_BASE (APB2PERIPH_BASE + 0x1400)
-define GPIOE_BASE (APB2PERIPH_BASE + 0x1800)
-define GPIOF_BASE (APB2PERIPH_BASE + 0x1C00)
-define GPIOG_BASE (APB2PERIPH_BASE + 0x2000)
+#define GPIOA_BASE (APB2PERIPH_BASE + 0x0800)
+#define GPIOB_BASE (APB2PERIPH_BASE + 0x0C00)
+#define GPIOC_BASE (APB2PERIPH_BASE + 0x1000)
+#define GPIOD_BASE (APB2PERIPH_BASE + 0x1400)
+#define GPIOE_BASE (APB2PERIPH_BASE + 0x1800)
+#define GPIOF_BASE (APB2PERIPH_BASE + 0x1C00)
+#define GPIOG_BASE (APB2PERIPH_BASE + 0x2000)
 
 // 寄存器基地址，以GPIOB 为例
-define GPIOB_CRL (GPIOB_BASE+0x00)
+#define GPIOB_CRL (GPIOB_BASE + 0x00)
 
 /* 控制GPIOB 引脚0 输出低电平(BSRR 寄存器的BR0 置1) */
-*(unsigned int *)GPIOB_BSRR = (0x01<<(16+0));
+*(unsigned int *)GPIOB_BSRR = (0x01 << (16 + 0));
 
 /* 控制GPIOB 引脚0 输出高电平(BSRR 寄存器的BS0 置1) */
-*(unsigned int *)GPIOB_BSRR = 0x01<<0;
+*(unsigned int *)GPIOB_BSRR = 0x01 << 0;
 unsigned int temp;
 
 /* 读取GPIOB 端口所有引脚的电平(读IDR 寄存器) */
@@ -390,22 +383,22 @@ temp = *(unsigned int *)GPIOB_IDR;
 
 ### 结构体封装寄存器组
 ```c
-typedef unsigned int uint16_t; /* 无符号16 位变量*/
-typedef unsigned short int uint32_t; /* 无符号32 位变量*/
+typedef unsigned short int uint16_t;  /* 无符号 16 位变量 */
+typedef unsigned int       uint32_t;  /* 无符号 32 位变量 */
 
 /* GPIO 寄存器列表“封装”为一个结构体 */
 typedef struct {
-uint32_t CRL; /*GPIO 端口配置低寄存器 地址偏移: 0x00 */
-uint32_t CRH; /*GPIO 端口配置高寄存器 地址偏移: 0x04 */
-uint32_t IDR; /*GPIO 数据输入寄存器 地址偏移: 0x08 */
-uint32_t ODR; /*GPIO 数据输出寄存器 地址偏移: 0x0C */
-uint32_t BSRR; /*GPIO 位设置/清除寄存器 地址偏移: 0x10 */
-uint32_t BRR; /*GPIO 端口位清除寄存器 地址偏移: 0x14 */
-uint16_t LCKR; /*GPIO 端口配置锁定寄存器 地址偏移: 0x18 */
+    uint32_t CRL;  /* GPIO 端口配置低寄存器 地址偏移: 0x00 */
+    uint32_t CRH;  /* GPIO 端口配置高寄存器 地址偏移: 0x04 */
+    uint32_t IDR;  /* GPIO 数据输入寄存器 地址偏移: 0x08 */
+    uint32_t ODR;  /* GPIO 数据输出寄存器 地址偏移: 0x0C */
+    uint32_t BSRR; /* GPIO 位设置/清除寄存器 地址偏移: 0x10 */
+    uint32_t BRR;  /* GPIO 端口位清除寄存器 地址偏移: 0x14 */
+    uint16_t LCKR; /* GPIO 端口配置锁定寄存器 地址偏移: 0x18 */
 } GPIO_TypeDef;
 
-GPIO_TypeDef * GPIOx; //定义一个GPIO_TypeDef 型结构体指针GPIOx
-GPIOx = GPIOB_BASE; //把指针地址设置为宏GPIOB_BASE 地址
+GPIO_TypeDef *GPIOx; // 定义一个 GPIO_TypeDef 型结构体指针 GPIOx
+GPIOx = (GPIO_TypeDef *)GPIOB_BASE; // 把指针地址设置为宏 GPIOB_BASE 地址
 GPIOx->IDR = 0xFFFF;
 GPIOx->ODR = 0xFFFF;
 
@@ -466,125 +459,38 @@ TIM_IT_Trigger：触发事件(计数器启动、停止、初始化或者由内�
 
 ### 输入捕获
 
-- Polarity Selection用于配置极性选择，这里配置上升沿；
-- IC Selection 配置为Direct，为直连模式，即配置IC1直接映射在TI1上；
-- Prescaler Division Ratio用于配置配置输入分频，这里选择为No division，即不分频。要注意的是，如果设置了分频比，例如设置为2，表示捕获到2个上升沿才产生一次中断；
-- Input Filter (4 bits value) 配置输入滤波器参数，这里配置为0，即不滤波。  
-    **Input Capture Channel 2参数配置如下：**
-- Polarity Selection这里配置下降沿；
-- IC Selection 配置为Direct，为直连模式，即配置IC2直接映射在TI1上；
-- Prescaler Division Ratio用于配置配置输入分频，这里选择为No division，即不分频
+- Polarity Selection：配置极性，本例为上升沿；
+- IC Selection：Direct，IC1 映射到 TI1；
+- Prescaler Division Ratio：No division，不分频；若设为 2，则捕获两个上升沿才产生一次中断；
+- Input Filter：输入滤波器，本例为 0（不滤波）。
+  **Input Capture Channel 2 参数配置：**
+- Polarity Selection：下降沿；
+- IC Selection：Direct，IC2 映射到 TI1；
+- Prescaler Division Ratio：No division。
 
 #### Input Filter
 
-从0到f，如下：
+输入滤波编码（参考 RM0090）：
 
-| **ICxF 值** | **输入滤波采样频率**                    | **采样次数**      |
-| ---------- | ------------------------------- | ------------- |
-| 0000       | 无滤波，直接响应                        | —             |
-| 0001       | fSAMPLING = fCK_INT, N=2        | 2个连续采样一致才有效   |
-| 0010       | fSAMPLING = fCK_INT, N=4        | 4×T_DTS       |
-| 0011       | fSAMPLING = fCK_INT, N=8        | 8×T_DTS       |
-| 0100       | fSAMPLING = fCK_INT/2, N=6      | 12×T_DTS      |
-| 0101       | fSAMPLING = fCK_INT/2, N=8      | 16×T_DTS      |
-| 0110       | fSAMPLING = fCK_INT/4, N=6      | 24×T_DTS      |
-| 0111       | fSAMPLING = fCK_INT/4, N=8      | 32×T_DTS      |
-| 1000       | fSAMPLING = fCK_INT/8, N=6      | 48×T_DTS      |
-| 1001       | fSAMPLING = fCK_INT/8, N=8      | 64×T_DTS      |
-| 1010       | fSAMPLING = fCK_INT/16, N=5     | 80×T_DTS      |
-| 1011       | fSAMPLING = fCK_INT/16, N=6     | 96×T_DTS      |
-| 1100       | fSAMPLING = fCK_INT/16, N=8     | 128×T_DTS     |
-| 1101       | fSAMPLING = fCK_INT/32, N=5     | 160×T_DTS     |
-| 1110       | fSAMPLING = fCK_INT/32, N=6     | 192×T_DTS     |
-| **1111**   | **fSAMPLING = fCK_INT/32, N=8** | **256×T_DTS** |
-比如timer分频之后的频率是：fDTS = 16MHz，那么
-  
-您发现了一个很好的问题！让我重新核对STM32官方手册中TIM_ICFilter的定义。
-
-## 问题分析
-
-我之前给出的表格存在错误。让我查阅STM32官方参考手册后，给出**正确的TIM_ICFilter编码表**。
-
-## STM32官方TIM_ICFilter定义
-
-根据STM32参考手册（RM0090），**正确的编码表**如下：
-
-### 完整的TIM_ICFilter映射表
-
-|ICF[3:0]|采样时钟|连续采样次数N|滤波时间计算|
+|ICF[3:0]|采样时钟|连续采样次数 N|滤波时间计算|
 |---|---|---|---|
 |0000 (0x0)|无滤波|-|0|
-|0001 (0x1)|fCK_INT|N=2|2/fCK_INT|
-|0010 (0x2)|fCK_INT|N=4|4/fCK_INT|
-|0011 (0x3)|fCK_INT|N=8|8/fCK_INT|
-|0100 (0x4)|fDTS/2|N=6|12/fDTS|
-|0101 (0x5)|fDTS/2|N=8|16/fDTS|
-|0110 (0x6)|fDTS/4|N=6|24/fDTS|
-|0111 (0x7)|fDTS/4|N=8|32/fDTS|
-|1000 (0x8)|fDTS/8|N=6|48/fDTS|
-|1001 (0x9)|fDTS/8|N=8|64/fDTS|
-|1010 (0xA)|fDTS/16|N=5|80/fDTS|
+|0001 (0x1)|fCK_INT|N=2|2 / fCK_INT|
+|0010 (0x2)|fCK_INT|N=4|4 / fCK_INT|
+|0011 (0x3)|fCK_INT|N=8|8 / fCK_INT|
+|0100 (0x4)|fDTS/2|N=6|12 / fDTS|
+|0101 (0x5)|fDTS/2|N=8|16 / fDTS|
+|0110 (0x6)|fDTS/4|N=6|24 / fDTS|
+|0111 (0x7)|fDTS/4|N=8|32 / fDTS|
+|1000 (0x8)|fDTS/8|N=6|48 / fDTS|
+|1001 (0x9)|fDTS/8|N=8|64 / fDTS|
+|1010 (0xA)|fDTS/16|N=5|80 / fDTS|
 |1011 (0xB)|fDTS/16|N=6|96/fDTS|
 |1100 (0xC)|fDTS/16|N=8|128/fDTS|
 |1101 (0xD)|fDTS/32|N=5|160/fDTS|
 |1110 (0xE)|fDTS/32|N=6|192/fDTS|
 |1111 (0xF)|fDTS/32|N=8|256/fDTS|
-
-**注意**：您提供的简化表格似乎是另一种表述方式，但与官方手册存在差异。
-
-## 根据您的代码配置重新计算
-
-### 当前配置参数
-
-- 
-- 
-- 
-- 
-
-### 0x0F 的实际效果（官方定义）
-
-- 
-- 
-- 
-- 
-
-## 您提供的表格分析
-
-您的表格显示的滤波时间与我之前计算的**不一致**。让我核对：
-
-如果按照您的表格（假设基于不同的参考或芯片系列）：
-
-- 
-- 
-- 
-- 
-
-但这与STM32F4系列官方手册不符。
-
-## 针对您的需求重新推荐
-
-### 目标：10μs左右的滤波时间
-
-基于**正确的官方定义**和您的配置：
-
-- 
-- 
-- 
-- 
-
-|Filter|采样时钟|N|滤波时间|评价|
-|---|---|---|---|---|
-|0x06|fDTS/4 = 1.25MHz|6|4.8μs|偏小|
-|0x07|fDTS/4 = 1.25MHz|8|6.4μs|较合适|
-|0x08|fDTS/8 = 625kHz|6|9.6μs|**推荐** ✓|
-|0x09|fDTS/8 = 625kHz|8|12.8μs|略大|
-|0x0A|fDTS/16 = 312.5kHz|5|16μs|较大|
-
-### 如果timer 16MHz
-
-假设改为16MHz计数频率 + TIM_CKD_DIV1：
-
-fDTS = 16MHz
+选择滤波参数时，以 fDTS 为采样时钟，例如 fDTS = 16MHz 时：
 
 | Filter | 采样时钟             | N   | 滤波时间    |
 | ------ | ---------------- | --- | ------- |
@@ -1073,29 +979,29 @@ SDIO的时钟在初始化时要低于400KHz。时钟信息要严格参照 main.c
 
 **问题描述**
 
-您在使用 STM32 时，有两个串口：
-• **串口1（如** huart2**）**：用于无线通信。
-• **串口2（如** huart3**）**：用于普通串口通信。
+使用 STM32 时有两个串口：
+- 串口 1（如 huart2）：用于无线通信。
+- 串口 2（如 huart3）：用于普通串口通信。
 
-您定义了一个枚举类型来区分通信接口：
+枚举类型用于区分端口：
 ```c
 typedef enum {
-    SERIAL_PORT = 0,
-    WIRELESS
+    SERIAL_PORT = 0,
+    WIRELESS
 } Com_Port_Type;
 ```
 
-在多个函数中，您需要根据 Com_Port_Type 类型来确定使用哪个串口（huart2 或 huart3）。由于这部分代码在多个地方重复，您希望找到一种更好的方法来优化代码，提高可读性和可维护性。
-  
-**解决方案概述**
-为了解决代码重复的问题，提高代码的可读性和可维护性，您可以考虑以下几种方法：
-1. **使用映射数组**：使用数组或结构体，将 Com_Port_Type 与对应的 UART_HandleTypeDef 指针关联起来。
-2. **使用内联函数（inline function）**：定义一个内联函数，根据 Com_Port_Type 返回对应的 UART 句柄。
-3. **使用宏定义**：使用宏来映射 Com_Port_Type 与 UART 句柄。
-4. **使用函数指针或回调机制**：封装 UART 操作，使用函数指针实现动态调用。
-  
+希望根据 Com_Port_Type 选择串口，避免在多处重复 if/switch 逻辑。
 
-下面将详细介绍每种方法的实现，并讨论它们的优缺点，帮助您选择最适合的方案。
+**解决方案概述**
+可尝试以下几种方式减少重复：
+1. 使用映射数组。
+2. 使用内联函数（inline function）。
+3. 使用宏定义。
+4. 使用结构体封装通信接口。
+5. 使用函数指针或回调机制。
+
+下面详细介绍每种方法的实现和优缺点。
 
 
 ### 方法一：使用映射数组
@@ -1108,8 +1014,8 @@ typedef enum {
 1. **定义 UART 句柄数组**
 ```c
 UART_HandleTypeDef *huart_array[] = {
-    &huart2, // SERIAL_PORT 对应 huart2
-    &huart3  // WIRELESS 对应 huart3
+    &huart2, // SERIAL_PORT 对应 huart2
+    &huart3  // WIRELESS 对应 huart3
 };
 ```
 
@@ -1117,20 +1023,20 @@ UART_HandleTypeDef *huart_array[] = {
 ```c
 void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 {
-    UART_HandleTypeDef *huart = huart_array[port];
-    HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    UART_HandleTypeDef *huart = huart_array[port];
+    HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
 }
 ```
 
 
 **优点**
-• **代码简洁**：避免了多次使用 if-else 或 switch-case 结构。
-• **易于扩展**：添加新的通信接口时，只需在数组中增加对应的 UART 句柄。
-• **效率高**：数组索引操作开销小。
-  
+- **代码简洁**：避免了多次使用 if-else 或 switch-case 结构。
+- **易于扩展**：添加新的通信接口时，只需在数组中增加对应的 UART 句柄。
+- **效率高**：数组索引操作开销小。
+
 **注意事项**
-• **确保枚举值与数组索引一致**：枚举类型的值应从 0 开始，并连续递增，与数组索引对应。
-• **防止数组越界**：在访问数组前，最好检查 port 的取值范围，防止非法访问。
+- **确保枚举值与数组索引一致**：枚举值应从 0 开始并连续递增。
+- **防止数组越界**：访问前检查 port 取值范围。
 
 ### 方法二：使用内联函数
 **实现思路**
@@ -1141,15 +1047,15 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 ```c
 static inline UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
 {
-    switch (port)
-    {
-        case SERIAL_PORT:
-            return &huart2;
-        case WIRELESS:
-            return &huart3;
-        default:
-            return NULL; // 或者处理错误情况
-    }
+    switch (port)
+    {
+        case SERIAL_PORT:
+            return &huart2;
+        case WIRELESS:
+            return &huart3;
+        default:
+            return NULL; // 或者处理错误情况
+    }
 }
 ```
 
@@ -1157,24 +1063,24 @@ static inline UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
 ```c
 void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 {
-    UART_HandleTypeDef *huart = Get_UART_Handle(port);
-    if (huart != NULL)
-    {
-        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
-    }
-    else
-    {
-        // 处理错误情况
-    }
+    UART_HandleTypeDef *huart = Get_UART_Handle(port);
+    if (huart != NULL)
+    {
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况
+    }
 }
 ```
 
 **优点**
-• **可读性高**：函数名清晰，代码逻辑明确。
-• **易于维护**：修改映射关系时，只需更改内联函数内部。
+- **可读性高**：函数名清晰，代码逻辑明确。
+- **易于维护**：修改映射关系时，只需更改内联函数内部。
 
 **缺点**
-• **略有开销**：尽管是内联函数，但 switch-case 结构可能带来微小的性能开销（通常可以忽略不计）。
+- **略有开销**：switch-case 结构有轻微开销（通常可忽略）。
 
 ### 方法三：使用宏定义
 
@@ -1192,18 +1098,18 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 ```c
 void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 {
-    UART_HandleTypeDef *huart = GET_UART_HANDLE(port);
-    HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    UART_HandleTypeDef *huart = GET_UART_HANDLE(port);
+    HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
 }
 ```
 
 **优点**
-• **效率高**：宏在预处理阶段替换，无运行时开销。
-• **代码简洁**：一行代码实现映射。
+- **效率高**：宏在预处理阶段替换，无运行时开销。
+- **代码简洁**：一行代码实现映射。
 
 **缺点**
-• **可读性差**：宏的使用可能降低代码的可读性，调试困难。
-• **类型安全性差**：宏没有类型检查，可能导致意外的错误。
+- **可读性差**：宏的使用可能降低可读性，调试困难。
+- **类型安全性差**：宏没有类型检查。
 
 ### 方法四：使用结构体封装通信接口
 **实现思路**
@@ -1213,17 +1119,17 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 1. **定义通信接口结构体**
 ```c
 typedef struct {
-    Com_Port_Type portType;
-    UART_HandleTypeDef *huart;
-    // 可以添加其他成员，例如端口名称、配置参数等
+    Com_Port_Type portType;
+    UART_HandleTypeDef *huart;
+    // 可以添加其他成员，例如端口名称、配置参数等
 } Com_Port_t;
 ```
 
 2. **定义通信接口数组**
 ```c
 Com_Port_t comPorts[] = {
-    { SERIAL_PORT, &huart2 },
-    { WIRELESS,    &huart3 }
+    { SERIAL_PORT, &huart2 },
+    { WIRELESS,    &huart3 }
 };
 ```
 
@@ -1231,14 +1137,14 @@ Com_Port_t comPorts[] = {
 ```c
 UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
 {
-    for (size_t i = 0; i < sizeof(comPorts)/sizeof(comPorts[0]); i++)
-    {
-        if (comPorts[i].portType == port)
-        {
-            return comPorts[i].huart;
-        }
-    }
-    return NULL; // 未找到匹配的端口
+    for (size_t i = 0; i < sizeof(comPorts) / sizeof(comPorts[0]); i++)
+    {
+        if (comPorts[i].portType == port)
+        {
+            return comPorts[i].huart;
+        }
+    }
+    return NULL; // 未找到匹配的端口
 }
 ```
 
@@ -1249,24 +1155,24 @@ UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
 ```c
 void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 {
-    UART_HandleTypeDef *huart = Get_UART_Handle(port);
-    if (huart != NULL)
-    {
-        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
-    }
-    else
-    {
-        // 处理错误情况_
-    }
+    UART_HandleTypeDef *huart = Get_UART_Handle(port);
+    if (huart != NULL)
+    {
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况
+    }
 }
 ```
 
 **优点**
-• **结构清晰**：封装了通信接口的信息，便于管理。
-• **扩展性好**：可以轻松添加新的通信接口和属性。
+- **结构清晰**：封装了通信接口的信息，便于管理。
+- **扩展性好**：可以轻松添加新的通信接口和属性。
 
 **缺点**
-• **查找开销**：每次调用需要遍历数组，查找对应的 UART 句柄。但对于接口数量较少的情况，开销可以忽略不计。
+- **查找开销**：每次调用需要遍历数组，查找对应的 UART 句柄。但对于接口数量较少的情况，开销可以忽略不计。
 
 ### **方法五：使用函数指针或回调机制**
 
@@ -1282,7 +1188,7 @@ void UART_Send_SerialPort(uint8_t *pData, uint16_t Size)
 
 {
 
-    HAL_UART_Transmit(&huart2, pData, Size, HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart2, pData, Size, HAL_MAX_DELAY);
 
 }
 
@@ -1292,7 +1198,7 @@ void UART_Send_Wireless(uint8_t *pData, uint16_t Size)
 
 {
 
-    HAL_UART_Transmit(&huart3, pData, Size, HAL_MAX_DELAY);
+    HAL_UART_Transmit(&huart3, pData, Size, HAL_MAX_DELAY);
 
 }
 
@@ -1311,9 +1217,8 @@ typedef void (*UART_Send_Func)(uint8_t *, uint16_t);
 
 UART_Send_Func uartSendFuncs[] = {
 
-    UART_Send_SerialPort, _// SERIAL_PORT_
-
-    UART_Send_Wireless    _// WIRELESS_
+    UART_Send_SerialPort, // SERIAL_PORT
+    UART_Send_Wireless    // WIRELESS
 
 };
 ```
@@ -1326,40 +1231,39 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 
 {
 
-    if (port < sizeof(uartSendFuncs)/sizeof(uartSendFuncs[0]))
+    if (port < sizeof(uartSendFuncs) / sizeof(uartSendFuncs[0]))
 
-    {
+    {
 
-        uartSendFuncs[port](pData, Size);
+        uartSendFuncs[port](pData, Size);
 
-    }
+    }
 
-    else
+    else
 
-    {
+    {
 
-        _// 处理错误情况_
+        // 处理错误情况
 
-    }
+    }
 
 }
 ```
   
 **优点**
-• **高扩展性**：可以针对不同的通信接口实现不同的操作逻辑。
-• **封装性好**：将具体的 UART 操作封装在函数内部。
+- **高扩展性**：可以针对不同的通信接口实现不同的操作逻辑。
+- **封装性好**：将具体的 UART 操作封装在函数内部。
 
 **缺点**
-• **复杂度增加**：对于简单的映射关系，可能有些过度设计。
-• **维护成本**：需要维护函数指针数组，增加了代码量。
+- **复杂度增加**：对于简单映射关系可能显得过度设计。
+- **维护成本**：需要维护函数指针数组。
 
 ### 选择最佳方案
 
 综合以上方法，**方法一（使用映射数组）** 和 **方法二（使用内联函数）** 最为简单实用，适合您的需求。
 
-• **方法一** 优点在于代码简洁，效率高，易于理解。
-
-• **方法二** 提供了更高的可读性，便于维护和调试。
+- **方法一** 优点在于代码简洁，效率高，易于理解。
+- **方法二** 提供了更高的可读性，便于维护和调试。
 
 如果您更关注代码的简洁性和效率，建议选择 **方法一**。
 
@@ -1369,32 +1273,31 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 **使用方法一：映射数组**
 ```c
 #include "main.h"
-UART_HandleTypeDef huart2; // 假设已初始化_
-
-UART_HandleTypeDef huart3; // 假设已初始化_
+UART_HandleTypeDef huart2; // 假设已初始化
+UART_HandleTypeDef huart3; // 假设已初始化
 
 typedef enum {
-    SERIAL_PORT = 0,
-    WIRELESS
+    SERIAL_PORT = 0,
+    WIRELESS
 } Com_Port_Type;
 
 UART_HandleTypeDef *huart_array[] = {
-    &huart2, // SERIAL_PORT_
-    &huart3  // WIRELESS_
+    &huart2, // SERIAL_PORT
+    &huart3  // WIRELESS
 };
 
 
 void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 {
-    if (port >= 0 && port < sizeof(huart_array)/sizeof(huart_array[0]))
-    {
-        UART_HandleTypeDef *huart = huart_array[port];
-        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
-    }
-    else
-    {
-        // 处理错误情况_
-    }
+    if (port >= 0 && port < sizeof(huart_array) / sizeof(huart_array[0]))
+    {
+        UART_HandleTypeDef *huart = huart_array[port];
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况
+    }
 }
 ```
 
@@ -1402,49 +1305,47 @@ void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 **使用方法二：内联函数**
   ```c
 #include "main.h"
-UART_HandleTypeDef huart2;// 假设已初始化_
-UART_HandleTypeDef huart3; // 假设已初始化_
+UART_HandleTypeDef huart2; // 假设已初始化
+UART_HandleTypeDef huart3; // 假设已初始化
 
 typedef enum {
-    SERIAL_PORT = 0,
-    WIRELESS
+    SERIAL_PORT = 0,
+    WIRELESS
 } Com_Port_Type;
 
 static inline UART_HandleTypeDef* Get_UART_Handle(Com_Port_Type port)
 {
-    switch (port)
-    {
-        case SERIAL_PORT:
-            return &huart2;
-        case WIRELESS:
-            return &huart3;
-        default:
-            return NULL; // 处理错误情况
-    }
+    switch (port)
+    {
+        case SERIAL_PORT:
+            return &huart2;
+        case WIRELESS:
+            return &huart3;
+        default:
+            return NULL; // 处理错误情况
+    }
 }
 
 void SendData(Com_Port_Type port, uint8_t *pData, uint16_t Size)
 {
-    UART_HandleTypeDef *huart = Get_UART_Handle(port);
-    if (huart != NULL)
-    {
-        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
-    }
-    else
-    {
-        // 处理错误情况
-    }
+    UART_HandleTypeDef *huart = Get_UART_Handle(port);
+    if (huart != NULL)
+    {
+        HAL_UART_Transmit(huart, pData, Size, HAL_MAX_DELAY);
+    }
+    else
+    {
+        // 处理错误情况
+    }
 }
 ```
   
 
 **额外建议**
-• **错误处理**：在获取 UART 句柄时，务必检查返回值是否为 NULL，以防止访问非法地址导致程序崩溃。
-• **类型安全**：如果可能，使用更严格的类型检查机制，防止错误的类型转换。
-
-• **代码注释**：添加必要的注释，说明函数的用途和参数，提升代码可读性。
-
-• **扩展性**：如果将来需要支持更多的通信接口，可以直接在数组或内联函数中添加新的映射关系。
+- 错误处理：获取 UART 句柄后先判断是否为 NULL，避免非法访问。
+- 类型安全：尽量保持严格类型检查，避免隐式转换。
+- 代码注释：只保留必要注释，说明函数用途和参数。
+- 扩展性：新增接口时可在映射数组或内联函数中补充映射关系。
 
 **结论**
 
