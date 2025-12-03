@@ -94,7 +94,7 @@ Many popular RTOS kernels include support for CMSIS-RTOS2 API:
 
 #### 芯片厂 SDK
 
-- [ESP-IDF（ESP32）](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/freertos.html)：大量组件和应用基于 FreeRTOS，文档明确说明其把 FreeRTOS 作为系统组件集成，并且为多核目标提供了特定实现（SMP 等），很适合学事件循环、组件化、任务划分与资源管理。
+- [ESP-IDF](https://github.com/espressif/esp-idf) & [ESP-IDF（doc）](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/system/freertos.html)：大量组件和应用基于 FreeRTOS，文档明确说明其把 FreeRTOS 作为系统组件集成，并且为多核目标提供了特定实现（SMP 等），很适合学事件循环、组件化、任务划分与资源管理。
 
 - STM32 的 FreeRTOS 中间件组件仓库（[stm32-mw-freertos](https://github.com/STMicroelectronics/stm32-mw-freertos)）：适合学习“厂商对上游 FreeRTOS 的封装方式”、以及和 Cube 生态协作的目录与发布策略。
 
