@@ -133,6 +133,14 @@ processor.save_image("output_image.jpg")
 通过类来共享状态，可以使代码更加模块化和结构化，减少全局变量的使用，降低错误的风险，并提高代码的可维护性。这种方法特别适用于需要在多个函数之间共享和修改相同数据的场景。
 
 ## UI files
+
+### pyside 不错的开源UI库
+
+- [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets/tree/master)
+- [qt-material](https://github.com/UN-GCPDS/qt-material/tree/master)
+
+### uic
+
 Both packages use slightly different approaches for loading `.ui` files exported from Qt Creator/Designer. PyQt5 provides the `uic` submodule which can be used to load UI files directly, to produce an object. This feels pretty Pythonic (if you ignore the camelCase).
 
 ```python

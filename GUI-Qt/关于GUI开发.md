@@ -4,6 +4,7 @@ UI的项目和个人尝试代码都移出该git仓库，到《Learn_Embedded》�
 
 
 ## GUI中的G
+
 GUI是G+UI，这个Graphics，包含着在最底层计算机室怎么处理“图像”的，也就是把各种各样的“形状”、“颜色”、“3D信息”转化成最终像素的过程。
 
 这一过程的原理，往往会出现在《计算图形学》，3D建模等方向，而在UI设计方向，好像少有人懂。其实这恰恰是计算机行业成功的表现，就是封装，一层层的抽象，让开发者不知道具体实现的底层细节，来开发更宏大的项目。比如Linux中GUI的`G`就是[X Window](https://zh.wikipedia.org/wiki/X%E8%A6%96%E7%AA%97%E7%B3%BB%E7%B5%B1)，但这还需要显卡、显卡驱动及显卡API如[OpenGL](https://zh.wikipedia.org/wiki/OpenGL)；而在Mac上，`OpenGL`和`X Window`对应的就是`Metal`和`AppKit`，当然Apple在近几年逐渐使用`IOS`和`MacOS`统一的`SwiftUI`来代替`MacOS`的`Appkit`和`IOS`的`UIKit`。总之，我们平常所说的GUI：只是操作系统提供了G，并又在G的API上封装了UI这个API，我们利用UI的API写窗口和主逻辑代码的链接关系（一般由Signal表示）
