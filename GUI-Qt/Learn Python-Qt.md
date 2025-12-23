@@ -138,7 +138,7 @@ processor.save_image("output_image.jpg")
 
 - [PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets/tree/master)
 - [qt-material](https://github.com/UN-GCPDS/qt-material/tree/master)
-
+https://github.com/dunderlab/qt-material
 ### uic
 
 Both packages use slightly different approaches for loading `.ui` files exported from Qt Creator/Designer. PyQt5 provides the `uic` submodule which can be used to load UI files directly, to produce an object. This feels pretty Pythonic (if you ignore the camelCase).
